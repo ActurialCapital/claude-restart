@@ -27,10 +27,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. When claude exits and `~/.claude-restart` exists, claude relaunches with options from that file after a 2s pause
   3. When claude exits and no restart file exists, the wrapper exits cleanly
   4. Restarts happen in the same terminal and working directory as the original launch
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md -- Wrapper script with restart loop, signal handling, and automated tests
 
 ### Phase 2: Restart Script
 **Goal**: Claude can trigger its own restart by executing a script that writes new options and kills the current process
@@ -64,6 +64,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Wrapper Script | 0/? | Not started | - |
+| 1. Wrapper Script | 0/1 | Not started | - |
 | 2. Restart Script | 0/? | Not started | - |
 | 3. Shell Integration | 0/? | Not started | - |
