@@ -13,12 +13,12 @@ Claude can be restarted with new CLI options from within a session without manua
 ### Validated
 
 - [x] Wrapper script runs claude in a loop, checking a restart file on exit — Validated in Phase 01: wrapper-script
+- [x] Restart script writes options to a file and kills the current claude process — Validated in Phase 02: restart-script
+- [x] After kill, wrapper sleeps 2s then relaunches `claude` with the new options — Validated in Phase 02: restart-script
+- [x] Restarts in the same terminal and working directory — Validated in Phase 02: restart-script
+- [x] All valid claude CLI flags pass through (especially `--dangerously-skip-permissions`, `--channels`) — Validated in Phase 02: restart-script
 
 ### Active
-- [ ] Restart script writes options to a file and kills the current claude process
-- [ ] After kill, wrapper sleeps 2s then relaunches `claude` with the new options
-- [ ] Restarts in the same terminal and working directory
-- [ ] All valid claude CLI flags pass through (especially `--dangerously-skip-permissions`, `--channels`)
 - [ ] Shell alias/function for launching claude via the wrapper
 
 ### Out of Scope
@@ -47,7 +47,7 @@ Claude can be restarted with new CLI options from within a session without manua
 |----------|-----------|---------|
 | Wrapper loop pattern over background process | Background processes can't reliably take over the terminal for a TUI app | ✓ Implemented |
 | Fixed restart file (`~/.claude-restart`) | Simple coordination, no PID tracking needed between wrapper and restart script | ✓ Implemented |
-| Kill via process tree walk (`$PPID` chain) | More reliable than `pkill` pattern matching for finding the right claude process | — Pending |
+| Kill via process tree walk (`$PPID` chain) | More reliable than `pkill` pattern matching for finding the right claude process | ✓ Implemented |
 
 ---
-*Last updated: 2026-03-20 — Phase 01 complete*
+*Last updated: 2026-03-20 — Phase 02 complete*
