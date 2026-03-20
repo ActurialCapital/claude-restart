@@ -40,10 +40,10 @@ Plans:
   1. Running the restart script with CLI options writes those options to `~/.claude-restart` and kills the claude process
   2. Running the restart script with no arguments restarts claude with the same options it was launched with
   3. The wrapper detects the kill and relaunches claude with the options from the restart file
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md -- Restart script with PPID walk, option writing, and TDD test suite
 
 ### Phase 3: Shell Integration
 **Goal**: User can launch claude-with-restart as easily as typing a short alias in any terminal
@@ -65,5 +65,5 @@ Phases execute in numeric order: 1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Wrapper Script | 0/1 | Not started | - |
-| 2. Restart Script | 0/? | Not started | - |
+| 2. Restart Script | 0/1 | Not started | - |
 | 3. Shell Integration | 0/? | Not started | - |
