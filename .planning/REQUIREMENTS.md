@@ -15,9 +15,9 @@
 
 ### Restart
 
-- [ ] **REST-01**: Restart script accepts CLI options as arguments and writes them to `~/.claude-restart`
-- [ ] **REST-02**: Restart script finds and kills the current claude process via process tree walk
-- [ ] **REST-03**: If no args given, restart script writes current session's options (default restart)
+- [x] **REST-01**: Restart script accepts CLI options as arguments and writes them to `~/.claude-restart`
+- [x] **REST-02**: Restart script finds and kills the current claude process via process tree walk
+- [x] **REST-03**: If no args given, restart script writes current session's options (default restart)
 
 ### Shell
 
@@ -49,9 +49,9 @@
 | WRAP-03 | Phase 1 | Complete |
 | WRAP-04 | Phase 1 | Complete |
 | WRAP-05 | Phase 1 | Complete |
-| REST-01 | Phase 2 | Pending |
-| REST-02 | Phase 2 | Pending |
-| REST-03 | Phase 2 | Pending |
+| REST-01 | Phase 2 | Complete |
+| REST-02 | Phase 2 | Complete |
+| REST-03 | Phase 2 | Complete |
 | SHEL-01 | Phase 3 | Pending |
 | SHEL-02 | Phase 3 | Pending |
 
