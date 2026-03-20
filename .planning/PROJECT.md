@@ -12,11 +12,9 @@ Claude can be restarted with new CLI options from within a session without manua
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Wrapper script runs claude in a loop, checking a restart file on exit — Validated in Phase 01: wrapper-script
 
 ### Active
-
-- [ ] Wrapper script runs claude in a loop, checking a restart file on exit
 - [ ] Restart script writes options to a file and kills the current claude process
 - [ ] After kill, wrapper sleeps 2s then relaunches `claude` with the new options
 - [ ] Restarts in the same terminal and working directory
@@ -47,9 +45,9 @@ Claude can be restarted with new CLI options from within a session without manua
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Wrapper loop pattern over background process | Background processes can't reliably take over the terminal for a TUI app | — Pending |
-| Fixed restart file (`~/.claude-restart`) | Simple coordination, no PID tracking needed between wrapper and restart script | — Pending |
+| Wrapper loop pattern over background process | Background processes can't reliably take over the terminal for a TUI app | ✓ Implemented |
+| Fixed restart file (`~/.claude-restart`) | Simple coordination, no PID tracking needed between wrapper and restart script | ✓ Implemented |
 | Kill via process tree walk (`$PPID` chain) | More reliable than `pkill` pattern matching for finding the right claude process | — Pending |
 
 ---
-*Last updated: 2026-03-20 after initialization*
+*Last updated: 2026-03-20 — Phase 01 complete*
