@@ -7,11 +7,11 @@
 
 ### Wrapper
 
-- [ ] **WRAP-01**: Wrapper runs claude in a loop, relaunching when restart file exists
-- [ ] **WRAP-02**: Wrapper sleeps 2s before relaunching claude
-- [ ] **WRAP-03**: Wrapper passes through initial CLI options to claude on first launch
-- [ ] **WRAP-04**: Wrapper reads new options from restart file on subsequent launches
-- [ ] **WRAP-05**: Wrapper stays in same terminal and working directory across restarts
+- [x] **WRAP-01**: Wrapper runs claude in a loop, relaunching when restart file exists
+- [x] **WRAP-02**: Wrapper sleeps 2s before relaunching claude
+- [x] **WRAP-03**: Wrapper passes through initial CLI options to claude on first launch
+- [x] **WRAP-04**: Wrapper reads new options from restart file on subsequent launches
+- [x] **WRAP-05**: Wrapper stays in same terminal and working directory across restarts
 
 ### Restart
 
@@ -44,11 +44,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WRAP-01 | Phase 1 | Pending |
-| WRAP-02 | Phase 1 | Pending |
-| WRAP-03 | Phase 1 | Pending |
-| WRAP-04 | Phase 1 | Pending |
-| WRAP-05 | Phase 1 | Pending |
+| WRAP-01 | Phase 1 | Complete |
+| WRAP-02 | Phase 1 | Complete |
+| WRAP-03 | Phase 1 | Complete |
+| WRAP-04 | Phase 1 | Complete |
+| WRAP-05 | Phase 1 | Complete |
 | REST-01 | Phase 2 | Pending |
 | REST-02 | Phase 2 | Pending |
 | REST-03 | Phase 2 | Pending |
