@@ -1,0 +1,60 @@
+#!/bin/bash
+# claude-restart: trigger a claude restart with new CLI options
+# Writes options to restart file and kills the claude process.
+# The wrapper (claude-wrapper) detects the file and relaunches.
+set -euo pipefail
+
+RESTART_FILE="${CLAUDE_RESTART_FILE:-$HOME/.claude-restart}"
+DEFAULT_OPTS="${CLAUDE_RESTART_DEFAULT_OPTS:-}"
+
+# Determine options to write
+if [[ $# -gt 0 ]]; then
+    opts="$*"
+else
+    opts="$DEFAULT_OPTS"
+fi
+
+# Write restart file
+if [[ -n "$opts" ]]; then
+    echo "$opts" > "$RESTART_FILE"
+else
+    touch "$RESTART_FILE"
+fi
+
+# Print confirmation
+if [[ -n "$opts" ]]; then
+    echo "Restarting claude with: $opts"
+else
+    echo "Restarting claude..."
+fi
+
+# Find and kill claude process
+if [[ -n "${CLAUDE_RESTART_TARGET_PID:-}" ]]; then
+    # Testing override: use specified PID directly
+    target_pid="$CLAUDE_RESTART_TARGET_PID"
+else
+    # Walk PPID chain to find claude (node) process
+    # Process chain: wrapper -> claude (node) -> bash (sandbox) -> this script
+    target_pid=""
+    current_pid="$$"
+
+    for i in $(seq 1 5); do
+        parent=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d ' ')
+        if [[ -z "$parent" || "$parent" == "0" || "$parent" == "1" ]]; then
+            break
+        fi
+        parent_cmd=$(ps -o command= -p "$parent" 2>/dev/null || true)
+        if [[ "$parent_cmd" == *"node"* && "$parent_cmd" == *"claude"* ]]; then
+            target_pid="$parent"
+            break
+        fi
+        current_pid="$parent"
+    done
+fi
+
+if [[ -n "$target_pid" ]]; then
+    kill -TERM "$target_pid" 2>/dev/null || true
+else
+    echo "claude-restart: warning: could not find claude process to kill" >&2
+    echo "claude-restart: restart file written; restart will occur when claude exits" >&2
+fi
