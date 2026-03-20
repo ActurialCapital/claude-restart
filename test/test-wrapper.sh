@@ -58,6 +58,9 @@ assert_contains() {
 # Prepend mock dir to PATH
 export PATH="$TMPDIR:$PATH"
 
+# Speed up tests by eliminating the restart delay
+export CLAUDE_WRAPPER_DELAY=0
+
 # --- Test 1: Normal exit without restart file ---
 echo "Test 1: Normal exit (no restart file)"
 rm -f "$RESTART_FILE" "$LOG"
@@ -120,12 +123,8 @@ assert_eq "second call also gets original args" "--original-flag" "$second_call"
 echo "Test 4: Exit code preserved"
 rm -f "$LOG" "$RESTART_FILE"
 create_mock 42
-"$WRAPPER" 2>&1 || true
-# Run again capturing exit code
-rm -f "$LOG"
-create_mock 42
-"$WRAPPER" 2>&1
-exit_code=$?
+exit_code=0
+"$WRAPPER" 2>&1 || exit_code=$?
 assert_eq "preserves claude exit code" "42" "$exit_code"
 
 # --- Test 5: Max restarts safety valve ---
@@ -142,8 +141,8 @@ sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
 sed -i '' "s|RESTARTFILE|$RESTART_FILE|g" "$MOCK_CLAUDE"
 chmod +x "$MOCK_CLAUDE"
 
-output=$("$WRAPPER" 2>&1)
-exit_code=$?
+exit_code=0
+output=$("$WRAPPER" 2>&1) || exit_code=$?
 call_count=$(wc -l < "$LOG" | tr -d ' ')
 assert_eq "ran claude 11 times (initial + 10 restarts)" "11" "$call_count"
 assert_contains "prints max restart warning" "Maximum restarts" "$output"

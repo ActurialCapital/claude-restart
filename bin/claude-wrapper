@@ -1,0 +1,55 @@
+#!/bin/bash
+# claude-wrapper: runs claude in a loop, relaunching on restart signal
+
+RESTART_FILE="${CLAUDE_RESTART_FILE:-$HOME/.claude-restart}"
+MAX_RESTARTS="${CLAUDE_WRAPPER_MAX_RESTARTS:-10}"
+RESTART_DELAY="${CLAUDE_WRAPPER_DELAY:-2}"
+restart_count=0
+
+# Store original args for "empty file = restart with same options" behavior
+original_args=("$@")
+current_args=("$@")
+
+# Trap SIGINT (Ctrl+C) to kill the entire wrapper, not just claude
+trap 'exit 130' INT
+
+while true; do
+    # Launch claude with current args in foreground
+    claude "${current_args[@]}"
+    exit_code=$?
+
+    # Check for restart signal
+    if [[ -f "$RESTART_FILE" ]]; then
+        restart_count=$((restart_count + 1))
+
+        if [[ $restart_count -gt $MAX_RESTARTS ]]; then
+            echo "claude-wrapper: Maximum restarts ($MAX_RESTARTS) reached. Exiting." >&2
+            rm -f "$RESTART_FILE"
+            exit 1
+        fi
+
+        # Read new options from file
+        new_opts=$(cat "$RESTART_FILE")
+        rm -f "$RESTART_FILE"
+
+        if [[ -n "$new_opts" ]]; then
+            # File has content: use those as new args
+            # Split the string into an array (word splitting is intentional)
+            read -ra current_args <<< "$new_opts"
+            echo "Restarting claude with: ${current_args[*]}"
+        else
+            # Empty file: restart with original launch options
+            current_args=("${original_args[@]}")
+            if [[ ${#current_args[@]} -gt 0 ]]; then
+                echo "Restarting claude with: ${current_args[*]}"
+            else
+                echo "Restarting claude..."
+            fi
+        fi
+
+        sleep "$RESTART_DELAY"
+    else
+        # No restart file: exit the wrapper
+        exit $exit_code
+    fi
+done
