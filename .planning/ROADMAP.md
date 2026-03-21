@@ -52,10 +52,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. A shell alias or function launches claude through the wrapper script with all arguments forwarded
   2. User has clear instructions (or an install script) to add the alias to their `.zshrc` so it persists across terminals
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md -- Install script with shell function, idempotency, uninstall, and test suite
 
 ## Progress
 
@@ -66,4 +66,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Wrapper Script | 0/1 | Not started | - |
 | 2. Restart Script | 0/1 | Not started | - |
-| 3. Shell Integration | 0/? | Not started | - |
+| 3. Shell Integration | 0/1 | Not started | - |
