@@ -21,8 +21,8 @@
 
 ### Shell
 
-- [ ] **SHEL-01**: Shell alias/function launches claude via the wrapper script
-- [ ] **SHEL-02**: Install script or instructions to auto-source in `.zshrc`
+- [x] **SHEL-01**: Shell alias/function launches claude via the wrapper script
+- [x] **SHEL-02**: Install script or instructions to auto-source in `.zshrc`
 
 ## v2 Requirements
 
@@ -52,8 +52,8 @@
 | REST-01 | Phase 2 | Complete |
 | REST-02 | Phase 2 | Complete |
 | REST-03 | Phase 2 | Complete |
-| SHEL-01 | Phase 3 | Pending |
-| SHEL-02 | Phase 3 | Pending |
+| SHEL-01 | Phase 3 | Complete |
+| SHEL-02 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 10 total

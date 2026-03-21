@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Wrapper Script** - Loop mechanism that runs claude and relaunches on restart signal
 - [ ] **Phase 2: Restart Script** - Script that writes new options and kills the current claude process
-- [ ] **Phase 3: Shell Integration** - Alias and install instructions for seamless daily use
+- [x] **Phase 3: Shell Integration** - Alias and install instructions for seamless daily use (completed 2026-03-21)
 
 ## Phase Details
 
@@ -52,7 +52,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. A shell alias or function launches claude through the wrapper script with all arguments forwarded
   2. User has clear instructions (or an install script) to add the alias to their `.zshrc` so it persists across terminals
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 03-01-PLAN.md -- Install script with shell function, idempotency, uninstall, and test suite
@@ -66,4 +66,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Wrapper Script | 0/1 | Not started | - |
 | 2. Restart Script | 0/1 | Not started | - |
-| 3. Shell Integration | 0/1 | Not started | - |
+| 3. Shell Integration | 1/1 | Complete   | 2026-03-21 |
