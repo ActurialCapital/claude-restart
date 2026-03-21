@@ -25,14 +25,32 @@ Claude can be restarted with new CLI options from within a session without manua
 
 ### Active
 
-(none — planning next milestone)
+- [ ] Restart mechanism works with `claude remote-control`
+- [ ] Restart mechanism works with `claude --channels plugin:telegram@...`
+- [ ] Mode selection — choose which mode to run at launch
+- [ ] systemd service for auto-restart on crash and boot
+- [ ] Watchdog for detecting unresponsive state (process alive but hung)
+- [ ] Keep-alive to prevent idle timeout
+- [ ] Only build VPS infrastructure for gaps not covered by remote-control
 
 ### Out of Scope
 
 - Slash command integration (`/restart`) — future milestone
 - Multi-instance support — assumes one claude session at a time
 - Session resume/context preservation across restarts — not in scope
-- Cross-platform (Linux/Windows) — macOS-only for now
+- Running both modes simultaneously — either remote-control or Telegram, not both
+
+## Current Milestone: v1.1 VPS Reliability
+
+**Goal:** Make Claude Code resilient on a personal Linux VPS — survive crashes, SSH drops, and idle timeouts.
+
+**Target features:**
+- Restart compatibility with `claude remote-control` and `claude --channels plugin:telegram@...`
+- Mode selection (either mode, not both simultaneously)
+- systemd service for auto-restart
+- Watchdog for hung/unresponsive detection
+- Keep-alive for idle timeout prevention
+- Only build what remote-control doesn't already handle
 
 ## Context
 
@@ -41,11 +59,14 @@ Tech stack: Pure bash, zsh shell integration, no external dependencies.
 3 scripts: `bin/claude-wrapper` (55 lines), `bin/claude-restart` (60 lines), `bin/install.sh` (86 lines).
 23 test cases, 41 assertions, all passing.
 
+VPS environment: Personal Linux server with systemd and tmux. Currently SSH in, start tmux, run claude manually. Telegram plugin (`--channels plugin:telegram@claude-plugins-official`) goes unresponsive without crashing — process alive but no response to messages. `claude remote-control` is an alternative mode but doesn't support `/clear`, so v1.0 restart mechanism is needed for context resets.
+
 ## Constraints
 
-- **Shell**: zsh on macOS — script and alias must work in zsh
-- **Platform**: macOS (Darwin) — process management uses macOS-compatible tools
-- **Simplicity**: Two scripts + one alias, no external dependencies
+- **Shell**: bash/zsh — scripts must work on both macOS and Linux
+- **Platform**: macOS (dev) + Linux VPS (production) — process management must be cross-platform where possible
+- **Simplicity**: Minimal scripts, no external dependencies beyond systemd
+- **VPS**: Personal setup, not a general-purpose distribution
 
 ## Key Decisions
 
@@ -58,5 +79,22 @@ Tech stack: Pure bash, zsh shell integration, no external dependencies.
 | Sentinel markers for zshrc modification | Enables idempotent install and clean uninstall | ✓ Good |
 | Graceful degradation when PID not found | File still written so wrapper can restart even if kill fails | ✓ Good |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-03-21 after v1.0 milestone*
+*Last updated: 2026-03-20 after v1.1 milestone started*

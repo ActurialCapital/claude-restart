@@ -1,29 +1,32 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: MVP
-status: completed
-stopped_at: Milestone v1.0 complete
-last_updated: "2026-03-21T03:45:00.000Z"
+milestone: v1.1
+milestone_name: VPS Reliability
+status: active
+stopped_at: Defining requirements
+last_updated: "2026-03-20T00:00:00.000Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-21)
+See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Claude can be restarted with new CLI options from within a session without manual exit-and-retype.
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v1.1 VPS Reliability
 
 ## Current Position
 
-Milestone v1.0 MVP — SHIPPED 2026-03-21
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-20 — Milestone v1.1 started
 
 ## Accumulated Context
 
@@ -38,10 +41,12 @@ None.
 
 ### Blockers/Concerns
 
-None.
+- Untested: v1.0 restart mechanism with `claude remote-control`
+- Untested: v1.0 restart mechanism with `claude --channels plugin:telegram@...`
+- Unknown: what resilience features `remote-control` already provides
 
 ## Session Continuity
 
-Last session: 2026-03-21
-Stopped at: Milestone v1.0 complete
+Last session: 2026-03-20
+Stopped at: Defining requirements for v1.1
 Resume file: None
