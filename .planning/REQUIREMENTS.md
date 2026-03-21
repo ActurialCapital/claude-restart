@@ -54,21 +54,21 @@ Requirements for VPS reliability milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WRAP-01 | — | Pending |
-| WRAP-02 | — | Pending |
-| WRAP-03 | — | Pending |
-| WRAP-04 | — | Pending |
-| SYSD-01 | — | Pending |
-| SYSD-02 | — | Pending |
-| SYSD-03 | — | Pending |
-| WDOG-01 | — | Pending |
-| KALV-01 | — | Pending |
+| WRAP-01 | Phase 4 | Pending |
+| WRAP-02 | Phase 4 | Pending |
+| WRAP-03 | Phase 4 | Pending |
+| WRAP-04 | Phase 4 | Pending |
+| SYSD-01 | Phase 5 | Pending |
+| SYSD-02 | Phase 5 | Pending |
+| SYSD-03 | Phase 5 | Pending |
+| WDOG-01 | Phase 6 | Pending |
+| KALV-01 | Phase 6 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9
+- Mapped to phases: 9
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-20*
-*Last updated: 2026-03-20 after initial definition*
+*Last updated: 2026-03-20 after v1.1 roadmap creation*
