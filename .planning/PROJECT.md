@@ -19,7 +19,11 @@ Claude can be restarted with new CLI options from within a session without manua
 - [x] All valid claude CLI flags pass through (especially `--dangerously-skip-permissions`, `--channels`) — Validated in Phase 02: restart-script
 
 ### Active
-- [ ] Shell alias/function for launching claude via the wrapper
+
+(none — all v1 requirements validated)
+
+### Previously Active
+- [x] Shell alias/function for launching claude via the wrapper — Validated in Phase 03: shell-integration
 
 ### Out of Scope
 
@@ -50,4 +54,4 @@ Claude can be restarted with new CLI options from within a session without manua
 | Kill via process tree walk (`$PPID` chain) | More reliable than `pkill` pattern matching for finding the right claude process | ✓ Implemented |
 
 ---
-*Last updated: 2026-03-20 — Phase 02 complete*
+*Last updated: 2026-03-20 — Phase 03 complete, all v1 phases done*
