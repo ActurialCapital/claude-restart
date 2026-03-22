@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: VPS Reliability
 status: unknown
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-22T03:52:01.123Z"
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-22T05:07:57.181Z"
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Claude can be restarted with new CLI options from within a session without manual exit-and-retype.
-**Current focus:** Phase 05 — systemd-service
+**Current focus:** Phase 06 — watchdog-and-keep-alive
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (watchdog-and-keep-alive) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Plan: Not started
 | Phase 04 P02 | 2min | 2 tasks | 4 files |
 | Phase 05 P01 | 1min | 2 tasks | 3 files |
 | Phase 05 P02 | 2min | 2 tasks | 2 files |
+| Phase 06 P01 | 12min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Installer exports CLAUDE_CONNECT=telegram instead of embedding channel string in DEFAULT_OPTS
 - [Phase 05]: RestartSec=5, KillSignal=SIGTERM, TimeoutStopSec=10 for clean service lifecycle
 - [Phase 05]: sed_inplace uses actual uname -s not overridden PLATFORM for correct cross-platform sed syntax
+- [Phase 06]: FIFO-based stdin delivery for heartbeat — cross-platform (macOS + Linux)
+- [Phase 06]: Backgrounded sleep with tracked PID and TERM trap prevents orphaned processes in heartbeat subshell
 
 ### Pending Todos
 
@@ -78,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T03:49:06.847Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-03-22T05:07:57.179Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None

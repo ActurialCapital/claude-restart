@@ -22,11 +22,11 @@ Requirements for VPS reliability milestone. Each maps to roadmap phases.
 
 ### Watchdog
 
-- [ ] **WDOG-01**: Periodic forced restart via systemd timer every N hours (configurable)
+- [x] **WDOG-01**: Periodic forced restart via systemd timer every N hours (configurable)
 
 ### Keep-Alive
 
-- [ ] **KALV-01**: Heartbeat mechanism prevents Telegram plugin idle timeout
+- [x] **KALV-01**: Heartbeat mechanism prevents Telegram plugin idle timeout
 
 ## Future Requirements
 
@@ -61,8 +61,8 @@ Requirements for VPS reliability milestone. Each maps to roadmap phases.
 | SYSD-01 | Phase 5 | Complete |
 | SYSD-02 | Phase 5 | Complete |
 | SYSD-03 | Phase 5 | Complete |
-| WDOG-01 | Phase 6 | Pending |
-| KALV-01 | Phase 6 | Pending |
+| WDOG-01 | Phase 6 | Complete |
+| KALV-01 | Phase 6 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 9 total

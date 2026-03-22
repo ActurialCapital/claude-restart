@@ -64,7 +64,7 @@ Plans:
   3. The Telegram plugin does not go idle and stop responding within a configured window — heartbeat is active and measurable (e.g., wrapper log shows periodic keep-alive signals)
 **Plans:** 2 plans
 Plans:
-- [ ] 06-01-PLAN.md — Watchdog timer/oneshot units, keep-alive heartbeat in wrapper
+- [x] 06-01-PLAN.md — Watchdog timer/oneshot units, keep-alive heartbeat in wrapper
 - [ ] 06-02-PLAN.md — Installer deployment and claude-service subcommands
 
 ## Progress
