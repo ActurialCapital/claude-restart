@@ -156,6 +156,109 @@ echo "--new-opt" > "$RESTART_FILE"
 "$WRAPPER" 2>&1 || true
 assert_eq "restart file deleted" "false" "$(test -f "$RESTART_FILE" && echo true || echo false)"
 
+# --- Test 7: SIGTERM forwarding ---
+echo "Test 7: SIGTERM forwarded to child, wrapper exits 0"
+rm -f "$LOG" "$RESTART_FILE"
+SIGLOG="$TMPDIR/sigterm.log"
+PIDFILE="$TMPDIR/child.pid"
+rm -f "$SIGLOG" "$PIDFILE"
+cat > "$MOCK_CLAUDE" << MOCKEOF
+#!/bin/bash
+echo \$\$ > "$PIDFILE"
+trap 'echo GOT_SIGTERM > "$SIGLOG"; exit 0' TERM
+sleep 10 &
+wait \$!
+MOCKEOF
+chmod +x "$MOCK_CLAUDE"
+
+"$WRAPPER" &
+wrapper_pid=$!
+# Wait for mock claude to start and write its PID
+for i in $(seq 1 50); do
+    [[ -f "$PIDFILE" ]] && break
+    sleep 0.1
+done
+assert_eq "child PID file created" "true" "$(test -f "$PIDFILE" && echo true || echo false)"
+kill -TERM "$wrapper_pid" 2>/dev/null
+wait "$wrapper_pid" 2>/dev/null
+wrapper_exit=$?
+assert_eq "wrapper exits 0 on SIGTERM" "0" "$wrapper_exit"
+# Give a moment for signal log to be written
+sleep 0.2
+assert_eq "child received SIGTERM" "GOT_SIGTERM" "$(cat "$SIGLOG" 2>/dev/null || echo MISSING)"
+
+# --- Test 8: SIGHUP ignored ---
+echo "Test 8: SIGHUP ignored (wrapper survives)"
+rm -f "$LOG" "$RESTART_FILE" "$PIDFILE"
+HUPLOG="$TMPDIR/hup.log"
+rm -f "$HUPLOG"
+cat > "$MOCK_CLAUDE" << MOCKEOF
+#!/bin/bash
+echo \$\$ > "$PIDFILE"
+sleep 10 &
+wait \$!
+MOCKEOF
+chmod +x "$MOCK_CLAUDE"
+
+"$WRAPPER" &
+wrapper_pid=$!
+for i in $(seq 1 50); do
+    [[ -f "$PIDFILE" ]] && break
+    sleep 0.1
+done
+kill -HUP "$wrapper_pid" 2>/dev/null
+sleep 0.3
+# Wrapper should still be running
+kill -0 "$wrapper_pid" 2>/dev/null
+alive=$?
+assert_eq "wrapper survives SIGHUP" "0" "$alive"
+# Clean up: send TERM to stop it
+kill -TERM "$wrapper_pid" 2>/dev/null
+wait "$wrapper_pid" 2>/dev/null || true
+
+# --- Test 9: CLAUDE_CONNECT=remote-control ---
+echo "Test 9: CLAUDE_CONNECT=remote-control prepends subcommand"
+rm -f "$LOG" "$RESTART_FILE"
+create_mock 0
+CLAUDE_CONNECT=remote-control "$WRAPPER" --verbose 2>&1
+logged_args=$(cat "$LOG")
+assert_eq "remote-control mode args" "remote-control --verbose" "$logged_args"
+
+# --- Test 10: CLAUDE_CONNECT=telegram ---
+echo "Test 10: CLAUDE_CONNECT=telegram prepends channel args"
+rm -f "$LOG" "$RESTART_FILE"
+create_mock 0
+CLAUDE_CONNECT=telegram "$WRAPPER" 2>&1
+logged_args=$(cat "$LOG")
+assert_contains "telegram has --channels" "--channels" "$logged_args"
+assert_contains "telegram has plugin string" "plugin:telegram@claude-plugins-official" "$logged_args"
+
+# --- Test 11: CLAUDE_CONNECT unset (backwards compat) ---
+echo "Test 11: CLAUDE_CONNECT unset uses passed args only"
+rm -f "$LOG" "$RESTART_FILE"
+create_mock 0
+unset CLAUDE_CONNECT 2>/dev/null || true
+"$WRAPPER" --foo 2>&1
+logged_args=$(cat "$LOG")
+assert_eq "interactive mode passes args only" "--foo" "$logged_args"
+
+# --- Test 12: CLAUDE_CONNECT=bogus exits 1 ---
+echo "Test 12: Invalid CLAUDE_CONNECT exits 1 with error"
+rm -f "$LOG" "$RESTART_FILE"
+create_mock 0
+exit_code=0
+output=$(CLAUDE_CONNECT=bogus "$WRAPPER" 2>&1) || exit_code=$?
+assert_eq "invalid mode exits 1" "1" "$exit_code"
+assert_contains "error mentions unknown mode" "unknown CLAUDE_CONNECT" "$output"
+
+# --- Test 13: Mode + extra args combined ---
+echo "Test 13: Mode + extra args combined correctly"
+rm -f "$LOG" "$RESTART_FILE"
+create_mock 0
+CLAUDE_CONNECT=remote-control "$WRAPPER" --verbose --model opus 2>&1
+logged_args=$(cat "$LOG")
+assert_eq "mode + extra args" "remote-control --verbose --model opus" "$logged_args"
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS/$TOTAL passed, $FAIL failed"
