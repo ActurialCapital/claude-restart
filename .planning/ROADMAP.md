@@ -51,7 +51,7 @@ Plans:
   4. `systemctl --user status claude` shows the service active and the correct mode is running
 **Plans:** 2 plans
 Plans:
-- [ ] 05-01-PLAN.md — Create systemd unit file, env template, and claude-service helper
+- [x] 05-01-PLAN.md — Create systemd unit file, env template, and claude-service helper
 - [ ] 05-02-PLAN.md — Extend installer with Linux/systemd deployment path
 
 ### Phase 6: Watchdog and Keep-Alive

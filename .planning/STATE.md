@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: VPS Reliability
 status: unknown
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-22T02:26:56.319Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-22T03:44:36.699Z"
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Claude can be restarted with new CLI options from within a session without manual exit-and-retype.
-**Current focus:** Phase 04 — wrapper-hardening
+**Current focus:** Phase 05 — systemd-service
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
+Phase: 05 (systemd-service) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Plan: Not started
 *Updated after each plan completion*
 | Phase 04 P01 | 2min | 1 tasks | 2 files |
 | Phase 04 P02 | 2min | 2 tasks | 4 files |
+| Phase 05 P01 | 1min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,7 @@ Recent decisions affecting current work:
 - [Phase 04]: CLAUDE_CONNECT env var maps to CLI args array; mode_args prepended to current_args
 - [Phase 04]: Restart file content only replaces extra args (current_args), never mode_args -- mode fixed at launch per D-09
 - [Phase 04]: Installer exports CLAUDE_CONNECT=telegram instead of embedding channel string in DEFAULT_OPTS
+- [Phase 05]: RestartSec=5, KillSignal=SIGTERM, TimeoutStopSec=10 for clean service lifecycle
 
 ### Pending Todos
 
@@ -74,6 +76,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T02:24:19.388Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-22T03:44:36.697Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
