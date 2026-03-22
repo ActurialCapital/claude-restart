@@ -259,6 +259,73 @@ CLAUDE_CONNECT=remote-control "$WRAPPER" --verbose --model opus 2>&1
 logged_args=$(cat "$LOG")
 assert_eq "mode + extra args" "remote-control --verbose --model opus" "$logged_args"
 
+# --- Test 14: Restart in remote-control mode preserves mode args ---
+echo "Test 14: Restart in remote-control mode preserves mode args"
+rm -f "$LOG" "$RESTART_FILE"
+cat > "$MOCK_CLAUDE" << 'MOCKEOF'
+#!/bin/bash
+echo "$@" >> LOGFILE
+CALL_COUNT=$(wc -l < LOGFILE)
+if [[ $CALL_COUNT -eq 1 ]]; then
+    echo "--model sonnet" > RESTARTFILE
+fi
+exit 0
+MOCKEOF
+sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
+sed -i '' "s|RESTARTFILE|$RESTART_FILE|g" "$MOCK_CLAUDE"
+chmod +x "$MOCK_CLAUDE"
+
+output=$(CLAUDE_CONNECT=remote-control "$WRAPPER" --debug 2>&1)
+first_call=$(sed -n '1p' "$LOG")
+second_call=$(sed -n '2p' "$LOG")
+assert_eq "first call: remote-control + extra args" "remote-control --debug" "$first_call"
+assert_eq "second call: remote-control + restart args" "remote-control --model sonnet" "$second_call"
+
+# --- Test 15: Restart in telegram mode preserves mode args ---
+echo "Test 15: Restart in telegram mode preserves mode args"
+rm -f "$LOG" "$RESTART_FILE"
+cat > "$MOCK_CLAUDE" << 'MOCKEOF'
+#!/bin/bash
+echo "$@" >> LOGFILE
+CALL_COUNT=$(wc -l < LOGFILE)
+if [[ $CALL_COUNT -eq 1 ]]; then
+    echo "--verbose" > RESTARTFILE
+fi
+exit 0
+MOCKEOF
+sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
+sed -i '' "s|RESTARTFILE|$RESTART_FILE|g" "$MOCK_CLAUDE"
+chmod +x "$MOCK_CLAUDE"
+
+output=$(CLAUDE_CONNECT=telegram "$WRAPPER" 2>&1)
+first_call=$(sed -n '1p' "$LOG")
+second_call=$(sed -n '2p' "$LOG")
+assert_contains "first call has channel args" "--channels plugin:telegram@claude-plugins-official" "$first_call"
+assert_contains "second call has channel args" "--channels plugin:telegram@claude-plugins-official" "$second_call"
+assert_contains "second call has restart extra args" "--verbose" "$second_call"
+
+# --- Test 16: Empty restart file in mode preserves mode + original extra args ---
+echo "Test 16: Empty restart file in mode preserves mode + original extra args"
+rm -f "$LOG" "$RESTART_FILE"
+cat > "$MOCK_CLAUDE" << 'MOCKEOF'
+#!/bin/bash
+echo "$@" >> LOGFILE
+CALL_COUNT=$(wc -l < LOGFILE)
+if [[ $CALL_COUNT -eq 1 ]]; then
+    touch RESTARTFILE
+fi
+exit 0
+MOCKEOF
+sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
+sed -i '' "s|RESTARTFILE|$RESTART_FILE|g" "$MOCK_CLAUDE"
+chmod +x "$MOCK_CLAUDE"
+
+output=$(CLAUDE_CONNECT=remote-control "$WRAPPER" --debug 2>&1)
+first_call=$(sed -n '1p' "$LOG")
+second_call=$(sed -n '2p' "$LOG")
+assert_eq "first call: remote-control + debug" "remote-control --debug" "$first_call"
+assert_eq "second call: remote-control + original debug" "remote-control --debug" "$second_call"
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS/$TOTAL passed, $FAIL failed"
