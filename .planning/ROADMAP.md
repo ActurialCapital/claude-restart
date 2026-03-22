@@ -32,10 +32,13 @@
 **Requirements**: WRAP-01, WRAP-02, WRAP-03, WRAP-04
 **Success Criteria** (what must be TRUE):
   1. Running `systemctl stop claude` (or any SIGTERM sender) stops the service within 5 seconds — no 90-second wait for SIGKILL
-  2. Setting `CLAUDE_MODE=remote-control` or `CLAUDE_MODE=telegram` at launch starts claude in the correct mode without manual argument editing
+  2. Setting `CLAUDE_CONNECT=remote-control` or `CLAUDE_CONNECT=telegram` at launch starts claude in the correct mode without manual argument editing
   3. Triggering a restart while in remote-control mode applies the new options and claude resumes — PPID chain walk finds the right process
   4. Triggering a restart while in Telegram channels mode applies the new options and claude resumes — plugin reconnects after wrapper relaunches
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 04-01-PLAN.md — Signal handling (SIGTERM/SIGHUP) and CLAUDE_CONNECT mode selection
+- [ ] 04-02-PLAN.md — Mode-aware restart logic and installer update
 
 ### Phase 5: systemd Service
 **Goal**: Claude runs as a systemd user service that survives crashes, VPS reboots, and SSH logouts without any manual intervention
@@ -68,6 +71,6 @@ Phases execute in numeric order: 4 → 5 → 6
 | 1. Wrapper Script | v1.0 | 1/1 | Complete | 2026-03-20 |
 | 2. Restart Script | v1.0 | 1/1 | Complete | 2026-03-20 |
 | 3. Shell Integration | v1.0 | 1/1 | Complete | 2026-03-21 |
-| 4. Wrapper Hardening | v1.1 | 0/? | Not started | - |
+| 4. Wrapper Hardening | v1.1 | 0/2 | Not started | - |
 | 5. systemd Service | v1.1 | 0/? | Not started | - |
 | 6. Watchdog and Keep-Alive | v1.1 | 0/? | Not started | - |
