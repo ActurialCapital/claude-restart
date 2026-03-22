@@ -38,7 +38,7 @@
 **Plans:** 2 plans
 Plans:
 - [x] 04-01-PLAN.md — Signal handling (SIGTERM/SIGHUP) and CLAUDE_CONNECT mode selection
-- [ ] 04-02-PLAN.md — Mode-aware restart logic and installer update
+- [x] 04-02-PLAN.md — Mode-aware restart logic and installer update
 
 ### Phase 5: systemd Service
 **Goal**: Claude runs as a systemd user service that survives crashes, VPS reboots, and SSH logouts without any manual intervention

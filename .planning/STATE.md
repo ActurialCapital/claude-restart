@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: VPS Reliability
 status: unknown
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-22T02:20:51.989Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-22T02:24:19.390Z"
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -42,6 +42,7 @@ Plan: 2 of 2
 
 *Updated after each plan completion*
 | Phase 04 P01 | 2min | 1 tasks | 2 files |
+| Phase 04 P02 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -59,6 +60,8 @@ Recent decisions affecting current work:
 - Keep-alive (KALV-01) is Telegram-only — remote-control has built-in reconnection, do not duplicate
 - [Phase 04]: Claude runs in background with wait to enable signal trapping
 - [Phase 04]: CLAUDE_CONNECT env var maps to CLI args array; mode_args prepended to current_args
+- [Phase 04]: Restart file content only replaces extra args (current_args), never mode_args -- mode fixed at launch per D-09
+- [Phase 04]: Installer exports CLAUDE_CONNECT=telegram instead of embedding channel string in DEFAULT_OPTS
 
 ### Pending Todos
 
@@ -71,6 +74,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T02:20:51.987Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-22T02:24:19.388Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
