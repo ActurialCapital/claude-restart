@@ -62,7 +62,10 @@ Plans:
   1. After N hours (configurable), a systemd timer fires and triggers a forced restart — even if the process appears alive
   2. The forced-restart timer is mode-aware: it fires in Telegram mode and is suppressed or skipped in remote-control mode where built-in reconnection handles recovery
   3. The Telegram plugin does not go idle and stop responding within a configured window — heartbeat is active and measurable (e.g., wrapper log shows periodic keep-alive signals)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 06-01-PLAN.md — Watchdog timer/oneshot units, keep-alive heartbeat in wrapper
+- [ ] 06-02-PLAN.md — Installer deployment and claude-service subcommands
 
 ## Progress
 
@@ -76,4 +79,4 @@ Phases execute in numeric order: 4 → 5 → 6
 | 3. Shell Integration | v1.0 | 1/1 | Complete | 2026-03-21 |
 | 4. Wrapper Hardening | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 5. systemd Service | v1.1 | 2/2 | Complete   | 2026-03-22 |
-| 6. Watchdog and Keep-Alive | v1.1 | 0/? | Not started | - |
+| 6. Watchdog and Keep-Alive | v1.1 | 0/2 | Not started | - |
