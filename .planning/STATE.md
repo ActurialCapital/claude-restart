@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: VPS Reliability
 status: unknown
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-22T03:44:36.699Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-22T03:49:06.849Z"
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -44,6 +44,7 @@ Plan: 2 of 2
 | Phase 04 P01 | 2min | 1 tasks | 2 files |
 | Phase 04 P02 | 2min | 2 tasks | 4 files |
 | Phase 05 P01 | 1min | 2 tasks | 3 files |
+| Phase 05 P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,7 @@ Recent decisions affecting current work:
 - [Phase 04]: Restart file content only replaces extra args (current_args), never mode_args -- mode fixed at launch per D-09
 - [Phase 04]: Installer exports CLAUDE_CONNECT=telegram instead of embedding channel string in DEFAULT_OPTS
 - [Phase 05]: RestartSec=5, KillSignal=SIGTERM, TimeoutStopSec=10 for clean service lifecycle
+- [Phase 05]: sed_inplace uses actual uname -s not overridden PLATFORM for correct cross-platform sed syntax
 
 ### Pending Todos
 
@@ -76,6 +78,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T03:44:36.697Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-03-22T03:49:06.847Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

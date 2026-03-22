@@ -21,7 +21,7 @@
 **Milestone Goal:** Make Claude Code resilient on a personal Linux VPS — survive crashes, SSH drops, and idle timeouts. Both remote-control and Telegram modes are supported, with the wrapper doing only what each mode doesn't already handle.
 
 - [ ] **Phase 4: Wrapper Hardening** — SIGTERM forwarding, mode selection, and restart compatibility with both claude modes
-- [ ] **Phase 5: systemd Service** — Crash recovery, boot persistence, and Linux install support via systemd user service
+- [x] **Phase 5: systemd Service** — Crash recovery, boot persistence, and Linux install support via systemd user service (completed 2026-03-22)
 - [ ] **Phase 6: Watchdog and Keep-Alive** — Periodic forced restart via systemd timer and Telegram idle prevention
 
 ## Phase Details
@@ -49,10 +49,10 @@ Plans:
   2. After a VPS reboot, the claude service starts without SSH login required
   3. Running `install.sh` on Linux deploys the systemd unit file and enables linger; running it on macOS leaves existing zshrc-based setup unchanged
   4. `systemctl --user status claude` shows the service active and the correct mode is running
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 05-01-PLAN.md — Create systemd unit file, env template, and claude-service helper
-- [ ] 05-02-PLAN.md — Extend installer with Linux/systemd deployment path
+- [x] 05-02-PLAN.md — Extend installer with Linux/systemd deployment path
 
 ### Phase 6: Watchdog and Keep-Alive
 **Goal**: Hung Telegram plugin sessions are detected and forcibly restarted on a schedule, and idle timeout is prevented by a periodic heartbeat
@@ -75,5 +75,5 @@ Phases execute in numeric order: 4 → 5 → 6
 | 2. Restart Script | v1.0 | 1/1 | Complete | 2026-03-20 |
 | 3. Shell Integration | v1.0 | 1/1 | Complete | 2026-03-21 |
 | 4. Wrapper Hardening | v1.1 | 2/2 | Complete | 2026-03-22 |
-| 5. systemd Service | v1.1 | 0/2 | Not started | - |
+| 5. systemd Service | v1.1 | 2/2 | Complete   | 2026-03-22 |
 | 6. Watchdog and Keep-Alive | v1.1 | 0/? | Not started | - |

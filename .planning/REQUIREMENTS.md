@@ -18,7 +18,7 @@ Requirements for VPS reliability milestone. Each maps to roadmap phases.
 
 - [x] **SYSD-01**: User service unit file runs wrapper with `Restart=on-failure`
 - [x] **SYSD-02**: Service starts on boot and survives SSH logout via `loginctl enable-linger`
-- [ ] **SYSD-03**: Install script detects Linux and installs systemd unit file (macOS path unchanged)
+- [x] **SYSD-03**: Install script detects Linux and installs systemd unit file (macOS path unchanged)
 
 ### Watchdog
 
@@ -60,7 +60,7 @@ Requirements for VPS reliability milestone. Each maps to roadmap phases.
 | WRAP-04 | Phase 4 | Complete |
 | SYSD-01 | Phase 5 | Complete |
 | SYSD-02 | Phase 5 | Complete |
-| SYSD-03 | Phase 5 | Pending |
+| SYSD-03 | Phase 5 | Complete |
 | WDOG-01 | Phase 6 | Pending |
 | KALV-01 | Phase 6 | Pending |
 
