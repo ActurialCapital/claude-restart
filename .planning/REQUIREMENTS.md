@@ -9,8 +9,8 @@ Requirements for VPS reliability milestone. Each maps to roadmap phases.
 
 ### Wrapper Hardening
 
-- [ ] **WRAP-01**: Wrapper forwards SIGTERM to Claude child process for graceful shutdown
-- [ ] **WRAP-02**: Wrapper supports mode selection (remote-control vs telegram) via config or env var
+- [x] **WRAP-01**: Wrapper forwards SIGTERM to Claude child process for graceful shutdown
+- [x] **WRAP-02**: Wrapper supports mode selection (remote-control vs telegram) via config or env var
 - [ ] **WRAP-03**: Restart mechanism works with `claude remote-control` (PPID chain walk, restart file)
 - [ ] **WRAP-04**: Restart mechanism works with `claude --channels plugin:telegram@claude-plugins-official`
 
@@ -54,8 +54,8 @@ Requirements for VPS reliability milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WRAP-01 | Phase 4 | Pending |
-| WRAP-02 | Phase 4 | Pending |
+| WRAP-01 | Phase 4 | Complete |
+| WRAP-02 | Phase 4 | Complete |
 | WRAP-03 | Phase 4 | Pending |
 | WRAP-04 | Phase 4 | Pending |
 | SYSD-01 | Phase 5 | Pending |

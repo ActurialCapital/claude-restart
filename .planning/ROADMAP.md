@@ -37,7 +37,7 @@
   4. Triggering a restart while in Telegram channels mode applies the new options and claude resumes — plugin reconnects after wrapper relaunches
 **Plans:** 2 plans
 Plans:
-- [ ] 04-01-PLAN.md — Signal handling (SIGTERM/SIGHUP) and CLAUDE_CONNECT mode selection
+- [x] 04-01-PLAN.md — Signal handling (SIGTERM/SIGHUP) and CLAUDE_CONNECT mode selection
 - [ ] 04-02-PLAN.md — Mode-aware restart logic and installer update
 
 ### Phase 5: systemd Service
