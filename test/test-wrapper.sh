@@ -25,7 +25,11 @@ create_mock() {
     local exit_code="${1:-0}"
     cat > "$MOCK_CLAUDE" << MOCKEOF
 #!/bin/bash
+# Drain stdin in background to prevent FIFO blocking in telegram mode
+cat > /dev/null &
+_drain_pid=\$!
 echo "\$@" >> "$LOG"
+kill \$_drain_pid 2>/dev/null; wait \$_drain_pid 2>/dev/null || true
 exit $exit_code
 MOCKEOF
     chmod +x "$MOCK_CLAUDE"
@@ -60,6 +64,8 @@ export PATH="$TMPDIR:$PATH"
 
 # Speed up tests by eliminating the restart delay
 export CLAUDE_WRAPPER_DELAY=0
+# Prevent heartbeat from firing during short-lived tests (Test 17 overrides to 1)
+export CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=9999
 
 # --- Test 1: Normal exit without restart file ---
 echo "Test 1: Normal exit (no restart file)"
@@ -286,11 +292,14 @@ echo "Test 15: Restart in telegram mode preserves mode args"
 rm -f "$LOG" "$RESTART_FILE"
 cat > "$MOCK_CLAUDE" << 'MOCKEOF'
 #!/bin/bash
+cat > /dev/null &
+_drain_pid=$!
 echo "$@" >> LOGFILE
 CALL_COUNT=$(wc -l < LOGFILE)
 if [[ $CALL_COUNT -eq 1 ]]; then
     echo "--verbose" > RESTARTFILE
 fi
+kill $_drain_pid 2>/dev/null; wait $_drain_pid 2>/dev/null || true
 exit 0
 MOCKEOF
 sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
@@ -325,6 +334,53 @@ first_call=$(sed -n '1p' "$LOG")
 second_call=$(sed -n '2p' "$LOG")
 assert_eq "first call: remote-control + debug" "remote-control --debug" "$first_call"
 assert_eq "second call: remote-control + original debug" "remote-control --debug" "$second_call"
+
+# --- Test 17: Heartbeat starts in telegram mode ---
+echo "Test 17: Heartbeat starts in telegram mode"
+rm -f "$LOG" "$RESTART_FILE"
+STDERR_LOG="$TMPDIR/heartbeat_stderr.log"
+rm -f "$STDERR_LOG"
+# Mock claude that sleeps 3 seconds then exits
+cat > "$MOCK_CLAUDE" << 'MOCKEOF'
+#!/bin/bash
+echo "$@" >> LOGFILE
+# Read from stdin in background to keep FIFO consumer alive
+cat > /dev/null &
+CAT_PID=$!
+sleep 3
+kill $CAT_PID 2>/dev/null; wait $CAT_PID 2>/dev/null || true
+exit 0
+MOCKEOF
+sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
+chmod +x "$MOCK_CLAUDE"
+
+CLAUDE_CONNECT=telegram CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>"$STDERR_LOG" || true
+stderr_output=$(cat "$STDERR_LOG" 2>/dev/null || echo "")
+assert_contains "heartbeat sent in telegram mode" "heartbeat sent" "$stderr_output"
+
+# --- Test 18: No heartbeat in remote-control mode ---
+echo "Test 18: No heartbeat in remote-control mode"
+rm -f "$LOG" "$RESTART_FILE" "$STDERR_LOG"
+# Mock claude that sleeps 2 seconds then exits
+cat > "$MOCK_CLAUDE" << 'MOCKEOF'
+#!/bin/bash
+echo "$@" >> LOGFILE
+sleep 2
+exit 0
+MOCKEOF
+sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
+chmod +x "$MOCK_CLAUDE"
+
+CLAUDE_CONNECT=remote-control CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>"$STDERR_LOG" || true
+stderr_output=$(cat "$STDERR_LOG" 2>/dev/null || echo "")
+TOTAL=$((TOTAL + 1))
+if [[ "$stderr_output" != *"heartbeat sent"* ]]; then
+    echo "  PASS: no heartbeat in remote-control mode"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: no heartbeat in remote-control mode (unexpected heartbeat found in stderr)"
+    FAIL=$((FAIL + 1))
+fi
 
 # --- Summary ---
 echo ""

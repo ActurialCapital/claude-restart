@@ -4,6 +4,7 @@
 RESTART_FILE="${CLAUDE_RESTART_FILE:-$HOME/.claude-restart}"
 MAX_RESTARTS="${CLAUDE_WRAPPER_MAX_RESTARTS:-10}"
 RESTART_DELAY="${CLAUDE_WRAPPER_DELAY:-2}"
+HEARTBEAT_INTERVAL="${CLAUDE_WRAPPER_HEARTBEAT_INTERVAL:-300}"
 restart_count=0
 
 # Store original args for "empty file = restart with same options" behavior
@@ -31,19 +32,58 @@ esac
 
 # Track child process for signal forwarding
 child_pid=""
+heartbeat_pid=""
+HEARTBEAT_FIFO=""
+
+# Heartbeat cleanup helper
+stop_heartbeat() {
+    if [[ -n "$heartbeat_pid" ]]; then
+        kill "$heartbeat_pid" 2>/dev/null; wait "$heartbeat_pid" 2>/dev/null || true
+        heartbeat_pid=""
+    fi
+    rm -f "${HEARTBEAT_FIFO:-}" 2>/dev/null
+}
 
 # Signal handlers
-trap 'if [[ -n "$child_pid" ]]; then kill -TERM "$child_pid" 2>/dev/null; wait "$child_pid" 2>/dev/null; fi; exit 0' TERM
+trap 'stop_heartbeat; if [[ -n "$child_pid" ]]; then kill -TERM "$child_pid" 2>/dev/null; wait "$child_pid" 2>/dev/null; fi; rm -f "${HEARTBEAT_FIFO:-}" 2>/dev/null; exit 0' TERM
 trap '' HUP
 trap 'exit 130' INT
 
 while true; do
-    # Launch claude with mode args + current args in background
-    claude "${mode_args[@]}" "${current_args[@]}" &
-    child_pid=$!
+    # Heartbeat setup (telegram mode only, per D-04, D-11, D-16)
+    heartbeat_pid=""
+    if [[ "${CLAUDE_CONNECT:-}" == "telegram" ]]; then
+        HEARTBEAT_FIFO=$(mktemp -u /tmp/claude-heartbeat.XXXXXX)
+        mkfifo "$HEARTBEAT_FIFO"
+        # Launch claude reading from FIFO for stdin
+        claude "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
+        child_pid=$!
+        # Start heartbeat writer in background
+        (
+            _hb_sleep_pid=""
+            trap 'kill "$_hb_sleep_pid" 2>/dev/null; exec 3>&- 2>/dev/null; exit 0' TERM
+            # Keep FIFO open for writing (open as fd 3)
+            exec 3>"$HEARTBEAT_FIFO"
+            while kill -0 "$child_pid" 2>/dev/null; do
+                sleep "$HEARTBEAT_INTERVAL" &
+                _hb_sleep_pid=$!
+                wait $_hb_sleep_pid 2>/dev/null || break
+                _hb_sleep_pid=""
+                echo "" >&3 2>/dev/null || break
+                echo "claude-wrapper: heartbeat sent $(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
+            done
+            exec 3>&- 2>/dev/null
+        ) &
+        heartbeat_pid=$!
+    else
+        claude "${mode_args[@]}" "${current_args[@]}" &
+        child_pid=$!
+    fi
     wait "$child_pid" 2>/dev/null
     exit_code=$?
     child_pid=""
+    # Stop heartbeat if running
+    stop_heartbeat
 
     # If wait was interrupted by a signal (exit_code > 128), the trap handler
     # already dealt with it. For TERM the trap exits; for others, continue loop.
