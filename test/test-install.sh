@@ -299,6 +299,90 @@ unset CLAUDE_RESTART_SYSTEMD_DIR
 unset CLAUDE_RESTART_ENV_DIR
 unset MOCK_LOG
 
+# =============================================================================
+# Watchdog Timer Install/Uninstall Tests
+# =============================================================================
+
+# --- Test 18: Linux install deploys watchdog timer and oneshot ---
+echo "Test 18: Linux install deploys watchdog timer and oneshot"
+TEST18_DIR="$TMPDIR/test18"
+mkdir -p "$TEST18_DIR"
+run_linux_install "$TEST18_DIR" "/tmp/test-workdir
+sk-test-key-456
+telegram"
+
+T18_SYSTEMD_DIR=$(cat "$TEST18_DIR/_systemd_dir")
+T18_MOCK_LOG=$(cat "$TEST18_DIR/_mock_log")
+t18_mock_calls=$(cat "$T18_MOCK_LOG")
+
+assert_eq "watchdog timer file exists" "true" "$(test -f "$T18_SYSTEMD_DIR/claude-watchdog.timer" && echo true || echo false)"
+assert_eq "watchdog oneshot file exists" "true" "$(test -f "$T18_SYSTEMD_DIR/claude-watchdog.service" && echo true || echo false)"
+
+t18_timer_content=$(cat "$T18_SYSTEMD_DIR/claude-watchdog.timer")
+assert_contains "timer has 8h interval" "OnUnitActiveSec=8h" "$t18_timer_content"
+assert_not_contains "placeholder replaced" "CLAUDE_WATCHDOG_HOURS_PLACEHOLDER" "$t18_timer_content"
+
+assert_contains "enable watchdog timer called" "enable claude-watchdog.timer" "$t18_mock_calls"
+assert_contains "start watchdog timer called" "start claude-watchdog.timer" "$t18_mock_calls"
+
+# --- Test 19: Linux uninstall removes watchdog files ---
+echo "Test 19: Linux uninstall removes watchdog files"
+TEST19_DIR="$TMPDIR/test19"
+mkdir -p "$TEST19_DIR"
+run_linux_install "$TEST19_DIR" "/tmp/test-workdir
+sk-test-key-789
+telegram"
+
+T19_SYSTEMD_DIR=$(cat "$TEST19_DIR/_systemd_dir")
+T19_MOCK_LOG=$(cat "$TEST19_DIR/_mock_log")
+
+# Run uninstall
+T19_ZSHRC="$TEST19_DIR/fake-zshrc"
+touch "$T19_ZSHRC"
+export CLAUDE_RESTART_INSTALL_DIR="$(cat "$TEST19_DIR/_install_dir")"
+export CLAUDE_RESTART_PLATFORM="Linux"
+export CLAUDE_RESTART_SYSTEMD_DIR="$T19_SYSTEMD_DIR"
+export CLAUDE_RESTART_ENV_DIR="$(cat "$TEST19_DIR/_env_dir")"
+export CLAUDE_RESTART_ZSHRC="$T19_ZSHRC"
+export MOCK_LOG="$T19_MOCK_LOG"
+
+mock_info=$(setup_linux_mocks "$TEST19_DIR")
+mock_bin="${mock_info%%:*}"
+# Use the same mock log so uninstall calls are appended
+export MOCK_LOG="$T19_MOCK_LOG"
+
+PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" --uninstall 2>&1
+
+t19_mock_calls=$(cat "$T19_MOCK_LOG")
+assert_contains "stop watchdog timer called" "stop claude-watchdog.timer" "$t19_mock_calls"
+assert_contains "disable watchdog timer called" "disable claude-watchdog.timer" "$t19_mock_calls"
+assert_eq "watchdog timer removed" "false" "$(test -f "$T19_SYSTEMD_DIR/claude-watchdog.timer" && echo true || echo false)"
+assert_eq "watchdog oneshot removed" "false" "$(test -f "$T19_SYSTEMD_DIR/claude-watchdog.service" && echo true || echo false)"
+
+# --- Test 20: Custom watchdog hours ---
+echo "Test 20: Custom watchdog hours"
+TEST20_DIR="$TMPDIR/test20"
+mkdir -p "$TEST20_DIR"
+
+export CLAUDE_WATCHDOG_HOURS=4
+run_linux_install "$TEST20_DIR" "/tmp/test-workdir
+sk-test-key-custom
+telegram"
+
+T20_SYSTEMD_DIR=$(cat "$TEST20_DIR/_systemd_dir")
+t20_timer_content=$(cat "$T20_SYSTEMD_DIR/claude-watchdog.timer")
+assert_contains "timer has custom 4h interval" "OnUnitActiveSec=4h" "$t20_timer_content"
+assert_not_contains "timer does not have default 8h" "OnUnitActiveSec=8h" "$t20_timer_content"
+unset CLAUDE_WATCHDOG_HOURS
+
+# Restore defaults for summary line
+export CLAUDE_RESTART_INSTALL_DIR="$INSTALL_DIR"
+export CLAUDE_RESTART_ZSHRC="$FAKE_ZSHRC"
+unset CLAUDE_RESTART_PLATFORM
+unset CLAUDE_RESTART_SYSTEMD_DIR
+unset CLAUDE_RESTART_ENV_DIR
+unset MOCK_LOG
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS/$TOTAL passed, $FAIL failed"

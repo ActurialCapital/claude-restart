@@ -5,14 +5,16 @@ set -euo pipefail
 SERVICE="claude.service"
 
 usage() {
-    echo "Usage: claude-service {start|stop|restart|status|logs}"
+    echo "Usage: claude-service {start|stop|restart|status|logs|watchdog|heartbeat}"
     echo ""
     echo "Commands:"
-    echo "  start    Start the claude service"
-    echo "  stop     Stop the claude service"
-    echo "  restart  Restart the claude service"
-    echo "  status   Show service status"
-    echo "  logs     Follow service logs (journalctl)"
+    echo "  start      Start the claude service"
+    echo "  stop       Stop the claude service"
+    echo "  restart    Restart the claude service"
+    echo "  status     Show service status"
+    echo "  logs       Follow service logs (journalctl)"
+    echo "  watchdog   Show watchdog timer status"
+    echo "  heartbeat  Show recent heartbeat log entries"
 }
 
 case "${1:-}" in
@@ -33,6 +35,12 @@ case "${1:-}" in
         ;;
     logs)
         journalctl --user -u claude -f
+        ;;
+    watchdog)
+        systemctl --user status claude-watchdog.timer
+        ;;
+    heartbeat)
+        journalctl --user -u claude --grep="heartbeat sent" --no-pager -n 20
         ;;
     --help|-h|"")
         usage
