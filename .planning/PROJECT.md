@@ -30,12 +30,14 @@ Claude can be restarted with new CLI options from within a session without manua
 - ✓ Environment file template for API keys and config — Phase 05
 - ✓ claude-service management helper (start/stop/restart/status/logs) — Phase 05
 - ✓ Linux installer path deploying systemd artifacts with linger — Phase 05
+- ✓ Watchdog timer for periodic forced restart (mode-aware, skips remote-control) — Phase 06
+- ✓ Keep-alive heartbeat via FIFO stdin in telegram mode — Phase 06
+- ✓ Installer deploys watchdog timer/oneshot with configurable interval — Phase 06
+- ✓ claude-service watchdog and heartbeat status subcommands — Phase 06
 
 ### Active
 
-- [ ] Watchdog for detecting unresponsive state (process alive but hung)
-- [ ] Watchdog for detecting unresponsive state (process alive but hung)
-- [ ] Keep-alive to prevent idle timeout
+(none — all v1.1 requirements validated)
 
 ### Out of Scope
 
@@ -58,11 +60,11 @@ Claude can be restarted with new CLI options from within a session without manua
 
 ## Context
 
-Shipped v1.0 with 201 LOC shell + 415 LOC tests. Phase 04 added signal handling, mode selection, and mode-aware restart. Phase 05 added systemd service layer and Linux installer path.
+Shipped v1.0 with 201 LOC shell + 415 LOC tests. Phase 04 added signal handling, mode selection, and mode-aware restart. Phase 05 added systemd service layer and Linux installer path. Phase 06 added watchdog timer for periodic forced restarts and FIFO-based keep-alive heartbeat for telegram mode.
 Tech stack: Pure bash, zsh shell integration, systemd for Linux service management.
 Scripts: `bin/claude-wrapper`, `bin/claude-restart`, `bin/install.sh`, `bin/claude-service`.
-Artifacts: `systemd/claude.service`, `systemd/env.template`.
-68 assertions across 3 test suites, all passing.
+Artifacts: `systemd/claude.service`, `systemd/claude-watchdog.timer`, `systemd/claude-watchdog.service`, `systemd/env.template`.
+82 assertions across 3 test suites, all passing.
 
 VPS environment: Personal Linux server with systemd and tmux. Currently SSH in, start tmux, run claude manually. Telegram plugin (`--channels plugin:telegram@claude-plugins-official`) goes unresponsive without crashing — process alive but no response to messages. `claude remote-control` is an alternative mode but doesn't support `/clear`, so v1.0 restart mechanism is needed for context resets.
 
@@ -102,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-21 after Phase 05 systemd-service complete*
+*Last updated: 2026-03-21 after Phase 06 watchdog-and-keep-alive complete*
