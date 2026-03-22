@@ -65,7 +65,7 @@ Plans:
 **Plans:** 2 plans
 Plans:
 - [x] 06-01-PLAN.md — Watchdog timer/oneshot units, keep-alive heartbeat in wrapper
-- [ ] 06-02-PLAN.md — Installer deployment and claude-service subcommands
+- [x] 06-02-PLAN.md — Installer deployment and claude-service subcommands
 
 ## Progress
 
