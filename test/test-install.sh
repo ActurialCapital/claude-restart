@@ -40,6 +40,18 @@ assert_contains() {
     fi
 }
 
+assert_not_contains() {
+    local desc="$1" needle="$2" haystack="$3"
+    TOTAL=$((TOTAL + 1))
+    if [[ "$haystack" != *"$needle"* ]]; then
+        echo "  PASS: $desc"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL: $desc (expected NOT to contain: '$needle')"
+        FAIL=$((FAIL + 1))
+    fi
+}
+
 # Test isolation: override install dir and zshrc
 INSTALL_DIR="$TMPDIR/install-bin"
 FAKE_ZSHRC="$TMPDIR/fake-zshrc"
@@ -119,6 +131,173 @@ else
     echo "  FAIL: DEFAULT_OPTS still contains telegram channel string"
     FAIL=$((FAIL + 1))
 fi
+
+# =============================================================================
+# Linux Install Path Tests
+# =============================================================================
+
+# Helper: set up mock environment for Linux tests
+setup_linux_mocks() {
+    local test_tmpdir="$1"
+
+    # Create mock bin dir with systemctl and loginctl
+    local mock_bin="$test_tmpdir/mock-bin"
+    mkdir -p "$mock_bin"
+
+    local mock_log="$test_tmpdir/mock-calls.log"
+    touch "$mock_log"
+
+    # Mock systemctl - logs all calls
+    cat > "$mock_bin/systemctl" << 'MOCKEOF'
+#!/bin/bash
+echo "systemctl $*" >> "$MOCK_LOG"
+MOCKEOF
+    chmod +x "$mock_bin/systemctl"
+
+    # Mock loginctl - logs all calls
+    cat > "$mock_bin/loginctl" << 'MOCKEOF'
+#!/bin/bash
+echo "loginctl $*" >> "$MOCK_LOG"
+MOCKEOF
+    chmod +x "$mock_bin/loginctl"
+
+    echo "$mock_bin:$mock_log"
+}
+
+# Helper: run Linux install with provided stdin
+run_linux_install() {
+    local test_tmpdir="$1"
+    local stdin_input="$2"
+
+    local mock_info
+    mock_info=$(setup_linux_mocks "$test_tmpdir")
+    local mock_bin="${mock_info%%:*}"
+    local mock_log="${mock_info#*:}"
+
+    local test_install_dir="$test_tmpdir/install-bin"
+    local test_systemd_dir="$test_tmpdir/systemd-user"
+    local test_env_dir="$test_tmpdir/env-dir"
+
+    export CLAUDE_RESTART_INSTALL_DIR="$test_install_dir"
+    export CLAUDE_RESTART_PLATFORM="Linux"
+    export CLAUDE_RESTART_SYSTEMD_DIR="$test_systemd_dir"
+    export CLAUDE_RESTART_ENV_DIR="$test_env_dir"
+    export MOCK_LOG="$mock_log"
+
+    echo "$stdin_input" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1
+
+    # Return values via files
+    echo "$test_install_dir" > "$test_tmpdir/_install_dir"
+    echo "$test_systemd_dir" > "$test_tmpdir/_systemd_dir"
+    echo "$test_env_dir" > "$test_tmpdir/_env_dir"
+    echo "$mock_log" > "$test_tmpdir/_mock_log"
+}
+
+# --- Test 11: Linux install creates systemd unit file ---
+echo "Test 11: Linux install creates systemd unit file"
+TEST11_DIR="$TMPDIR/test11"
+mkdir -p "$TEST11_DIR"
+# stdin: working dir, API key, connection mode
+run_linux_install "$TEST11_DIR" "/tmp/test-workdir
+sk-test-key-123
+remote-control"
+
+T11_SYSTEMD_DIR=$(cat "$TEST11_DIR/_systemd_dir")
+assert_eq "unit file exists" "true" "$(test -f "$T11_SYSTEMD_DIR/claude.service" && echo true || echo false)"
+
+unit_content=$(cat "$T11_SYSTEMD_DIR/claude.service")
+assert_contains "unit has Restart=on-failure" "Restart=on-failure" "$unit_content"
+assert_not_contains "placeholder replaced" "WORKING_DIR_PLACEHOLDER" "$unit_content"
+assert_contains "working dir baked in" "/tmp/test-workdir" "$unit_content"
+
+# --- Test 12: Linux install creates env file with correct permissions ---
+echo "Test 12: Linux install creates env file with correct permissions"
+T12_ENV_DIR=$(cat "$TEST11_DIR/_env_dir")
+assert_eq "env file exists" "true" "$(test -f "$T12_ENV_DIR/env" && echo true || echo false)"
+
+# Check permissions (macOS stat format)
+env_perms=$(stat -f "%Lp" "$T12_ENV_DIR/env" 2>/dev/null || stat -c "%a" "$T12_ENV_DIR/env" 2>/dev/null)
+assert_eq "env file permissions 600" "600" "$env_perms"
+
+env_content=$(cat "$T12_ENV_DIR/env")
+assert_contains "env has API key" "ANTHROPIC_API_KEY=sk-test-key-123" "$env_content"
+assert_contains "env has CLAUDE_CONNECT" "CLAUDE_CONNECT=remote-control" "$env_content"
+assert_not_contains "HOME placeholder replaced" "HOME_PLACEHOLDER" "$env_content"
+
+# --- Test 13: Linux install copies claude-service to INSTALL_DIR ---
+echo "Test 13: Linux install copies claude-service to INSTALL_DIR"
+T13_INSTALL_DIR=$(cat "$TEST11_DIR/_install_dir")
+assert_eq "claude-service exists" "true" "$(test -f "$T13_INSTALL_DIR/claude-service" && echo true || echo false)"
+assert_eq "claude-service executable" "true" "$(test -x "$T13_INSTALL_DIR/claude-service" && echo true || echo false)"
+
+# --- Test 14: Linux install calls systemctl daemon-reload, enable, start ---
+echo "Test 14: Linux install calls systemctl daemon-reload, enable, start"
+T14_MOCK_LOG=$(cat "$TEST11_DIR/_mock_log")
+mock_calls=$(cat "$T14_MOCK_LOG")
+assert_contains "daemon-reload called" "daemon-reload" "$mock_calls"
+assert_contains "enable called" "enable claude.service" "$mock_calls"
+assert_contains "start called" "start claude.service" "$mock_calls"
+
+# --- Test 15: Linux install calls loginctl enable-linger ---
+echo "Test 15: Linux install calls loginctl enable-linger"
+assert_contains "enable-linger called" "enable-linger" "$mock_calls"
+
+# --- Test 16: macOS install does NOT create systemd files ---
+echo "Test 16: macOS install does NOT create systemd files"
+TEST16_DIR="$TMPDIR/test16"
+mkdir -p "$TEST16_DIR"
+T16_INSTALL_DIR="$TEST16_DIR/install-bin"
+T16_SYSTEMD_DIR="$TEST16_DIR/systemd-user"
+T16_ZSHRC="$TEST16_DIR/fake-zshrc"
+touch "$T16_ZSHRC"
+
+export CLAUDE_RESTART_INSTALL_DIR="$T16_INSTALL_DIR"
+export CLAUDE_RESTART_PLATFORM="Darwin"
+export CLAUDE_RESTART_SYSTEMD_DIR="$T16_SYSTEMD_DIR"
+export CLAUDE_RESTART_ZSHRC="$T16_ZSHRC"
+
+bash "$INSTALL_SCRIPT" 2>&1
+
+assert_eq "no systemd dir created" "false" "$(test -d "$T16_SYSTEMD_DIR" && echo true || echo false)"
+assert_eq "no unit file" "false" "$(test -f "$T16_SYSTEMD_DIR/claude.service" && echo true || echo false)"
+
+t16_zshrc_content=$(cat "$T16_ZSHRC")
+assert_contains "zshrc has sentinel" "# >>> claude-restart >>>" "$t16_zshrc_content"
+
+# --- Test 17: Linux install skips existing env file ---
+echo "Test 17: Linux install skips existing env file"
+TEST17_DIR="$TMPDIR/test17"
+mkdir -p "$TEST17_DIR"
+
+# Pre-create env file
+T17_ENV_DIR="$TEST17_DIR/env-dir"
+mkdir -p "$T17_ENV_DIR"
+echo "EXISTING=true" > "$T17_ENV_DIR/env"
+
+mock_info=$(setup_linux_mocks "$TEST17_DIR")
+mock_bin="${mock_info%%:*}"
+mock_log="${mock_info#*:}"
+
+export CLAUDE_RESTART_INSTALL_DIR="$TEST17_DIR/install-bin"
+export CLAUDE_RESTART_PLATFORM="Linux"
+export CLAUDE_RESTART_SYSTEMD_DIR="$TEST17_DIR/systemd-user"
+export CLAUDE_RESTART_ENV_DIR="$T17_ENV_DIR"
+export MOCK_LOG="$mock_log"
+
+# Only need working dir prompt (env file skipped, so no API key / mode prompts)
+t17_output=$(echo "/tmp/workdir" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1)
+
+assert_contains "skip message shown" "already exists" "$t17_output"
+t17_env_content=$(cat "$T17_ENV_DIR/env")
+assert_contains "existing env preserved" "EXISTING=true" "$t17_env_content"
+
+# Restore defaults for summary line
+export CLAUDE_RESTART_INSTALL_DIR="$INSTALL_DIR"
+export CLAUDE_RESTART_ZSHRC="$FAKE_ZSHRC"
+unset CLAUDE_RESTART_PLATFORM
+unset CLAUDE_RESTART_SYSTEMD_DIR
+unset CLAUDE_RESTART_ENV_DIR
+unset MOCK_LOG
 
 # --- Summary ---
 echo ""

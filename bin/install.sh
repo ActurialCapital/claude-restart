@@ -15,8 +15,9 @@ ENV_DIR="${CLAUDE_RESTART_ENV_DIR:-$HOME/.config/claude-restart}"
 ENV_FILE="$ENV_DIR/env"
 
 # Portable sed in-place (macOS needs '' argument, Linux does not)
+# Uses actual OS (uname), not PLATFORM which may be overridden for testing
 sed_inplace() {
-    if [[ "$PLATFORM" == "Darwin" ]]; then
+    if [[ "$(uname -s)" == "Darwin" ]]; then
         sed -i '' "$@"
     else
         sed -i "$@"
