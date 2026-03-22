@@ -1,0 +1,45 @@
+#!/bin/bash
+# claude-service: manage the claude systemd user service
+set -euo pipefail
+
+SERVICE="claude.service"
+
+usage() {
+    echo "Usage: claude-service {start|stop|restart|status|logs}"
+    echo ""
+    echo "Commands:"
+    echo "  start    Start the claude service"
+    echo "  stop     Stop the claude service"
+    echo "  restart  Restart the claude service"
+    echo "  status   Show service status"
+    echo "  logs     Follow service logs (journalctl)"
+}
+
+case "${1:-}" in
+    start)
+        systemctl --user start "$SERVICE"
+        echo "Claude service started"
+        ;;
+    stop)
+        systemctl --user stop "$SERVICE"
+        echo "Claude service stopped"
+        ;;
+    restart)
+        systemctl --user restart "$SERVICE"
+        echo "Claude service restarted"
+        ;;
+    status)
+        systemctl --user status "$SERVICE"
+        ;;
+    logs)
+        journalctl --user -u claude -f
+        ;;
+    --help|-h|"")
+        usage
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        usage >&2
+        exit 1
+        ;;
+esac
