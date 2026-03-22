@@ -51,6 +51,10 @@ while true; do
         continue
     fi
 
+    # Mode-aware restart: mode_args (from CLAUDE_CONNECT) are fixed at launch.
+    # Restart file content replaces only current_args (extra args).
+    # Mode is never lost on restart (per D-09).
+
     # Check for restart signal
     if [[ -f "$RESTART_FILE" ]]; then
         restart_count=$((restart_count + 1))
