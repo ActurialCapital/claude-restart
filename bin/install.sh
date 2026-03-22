@@ -83,7 +83,16 @@ do_install_linux() {
     sed_inplace "s|WORKING_DIR_PLACEHOLDER|$WORK_DIR|" "$SYSTEMD_USER_DIR/claude.service"
     echo "Installed systemd unit file to $SYSTEMD_USER_DIR/claude.service"
 
-    # 5. Enable linger and start service (per D-08, D-09)
+    # 5. Install watchdog timer and oneshot (per D-12)
+    cp "$SCRIPT_DIR/../systemd/claude-watchdog.timer" "$SYSTEMD_USER_DIR/claude-watchdog.timer"
+    cp "$SCRIPT_DIR/../systemd/claude-watchdog.service" "$SYSTEMD_USER_DIR/claude-watchdog.service"
+
+    # Replace watchdog hours placeholder with value from env file (default 8)
+    WATCHDOG_HOURS="${CLAUDE_WATCHDOG_HOURS:-8}"
+    sed_inplace "s|CLAUDE_WATCHDOG_HOURS_PLACEHOLDER|$WATCHDOG_HOURS|g" "$SYSTEMD_USER_DIR/claude-watchdog.timer"
+    echo "Installed watchdog timer ($WATCHDOG_HOURS hour interval) to $SYSTEMD_USER_DIR/"
+
+    # 6. Enable linger and start service (per D-08, D-09)
     # Enable linger for boot persistence (per D-08)
     loginctl enable-linger "$USER" 2>/dev/null || echo "Warning: loginctl enable-linger failed (may need root)"
 
@@ -92,7 +101,12 @@ do_install_linux() {
     systemctl --user enable claude.service
     systemctl --user start claude.service
     echo "Claude service enabled and started"
-    echo "Manage with: claude-service {start|stop|restart|status|logs}"
+
+    systemctl --user enable claude-watchdog.timer
+    systemctl --user start claude-watchdog.timer
+    echo "Watchdog timer enabled and started"
+
+    echo "Manage with: claude-service {start|stop|restart|status|logs|watchdog|heartbeat}"
 }
 
 do_install_macos() {
@@ -149,11 +163,17 @@ do_uninstall() {
 
     # 3. Remove systemd service if on Linux
     if [[ "$PLATFORM" == "Linux" ]]; then
+        # Stop and remove watchdog timer
+        systemctl --user stop claude-watchdog.timer 2>/dev/null || true
+        systemctl --user disable claude-watchdog.timer 2>/dev/null || true
+        rm -f "$SYSTEMD_USER_DIR/claude-watchdog.timer"
+        rm -f "$SYSTEMD_USER_DIR/claude-watchdog.service"
+
         systemctl --user stop claude.service 2>/dev/null || true
         systemctl --user disable claude.service 2>/dev/null || true
         rm -f "$SYSTEMD_USER_DIR/claude.service"
         rm -f "$ENV_FILE"
-        echo "Removed systemd service and env file"
+        echo "Removed systemd service, watchdog timer, and env file"
     fi
 
     # 4. Print success
