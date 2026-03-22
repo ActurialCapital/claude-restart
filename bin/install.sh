@@ -30,7 +30,8 @@ do_install() {
         # 5. Append shell function block
         cat >> "$ZSHRC" << ZSHBLOCK
 $SENTINEL_START
-export CLAUDE_RESTART_DEFAULT_OPTS="--dangerously-skip-permissions --channels plugin:telegram@claude-plugins-official"
+export CLAUDE_CONNECT="telegram"
+export CLAUDE_RESTART_DEFAULT_OPTS="--dangerously-skip-permissions"
 export PATH="$INSTALL_DIR:\$PATH"
 claude-restart() {
     if [[ \$# -gt 0 ]]; then

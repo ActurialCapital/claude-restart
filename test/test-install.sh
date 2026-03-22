@@ -102,9 +102,23 @@ bash "$INSTALL_SCRIPT"
 zshrc_content=$(cat "$FAKE_ZSHRC")
 assert_contains "absolute path to wrapper" "$INSTALL_DIR/claude-wrapper" "$zshrc_content"
 
-# --- Test 9: CLAUDE_RESTART_DEFAULT_OPTS export present ---
-echo "Test 9: CLAUDE_RESTART_DEFAULT_OPTS export present"
-assert_contains "default opts export" "CLAUDE_RESTART_DEFAULT_OPTS" "$zshrc_content"
+# --- Test 9: CLAUDE_CONNECT and CLAUDE_RESTART_DEFAULT_OPTS exports ---
+echo "Test 9: CLAUDE_CONNECT and CLAUDE_RESTART_DEFAULT_OPTS exports"
+assert_contains "CLAUDE_CONNECT export" 'CLAUDE_CONNECT="telegram"' "$zshrc_content"
+assert_contains "default opts without channel string" 'CLAUDE_RESTART_DEFAULT_OPTS="--dangerously-skip-permissions"' "$zshrc_content"
+
+# --- Test 10: No hardcoded telegram channel string in DEFAULT_OPTS ---
+echo "Test 10: No hardcoded telegram channel string in DEFAULT_OPTS"
+# Ensure the channel string is NOT in the zshrc block's DEFAULT_OPTS line
+default_opts_line=$(grep "CLAUDE_RESTART_DEFAULT_OPTS" "$FAKE_ZSHRC" || true)
+TOTAL=$((TOTAL + 1))
+if [[ "$default_opts_line" != *"plugin:telegram"* ]]; then
+    echo "  PASS: no telegram channel string in DEFAULT_OPTS"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: DEFAULT_OPTS still contains telegram channel string"
+    FAIL=$((FAIL + 1))
+fi
 
 # --- Summary ---
 echo ""
