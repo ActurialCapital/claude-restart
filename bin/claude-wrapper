@@ -10,13 +10,46 @@ restart_count=0
 original_args=("$@")
 current_args=("$@")
 
-# Trap SIGINT (Ctrl+C) to kill the entire wrapper, not just claude
+# Mode selection (per CLAUDE_CONNECT env var)
+mode_args=()
+case "${CLAUDE_CONNECT:-}" in
+    remote-control)
+        mode_args=("remote-control")
+        ;;
+    telegram)
+        mode_args=("--channels" "plugin:telegram@claude-plugins-official")
+        ;;
+    "")
+        # Interactive mode -- no mode args, use passed args only
+        ;;
+    *)
+        echo "claude-wrapper: unknown CLAUDE_CONNECT mode: $CLAUDE_CONNECT" >&2
+        echo "claude-wrapper: valid values: remote-control, telegram, or unset for interactive" >&2
+        exit 1
+        ;;
+esac
+
+# Track child process for signal forwarding
+child_pid=""
+
+# Signal handlers
+trap 'if [[ -n "$child_pid" ]]; then kill -TERM "$child_pid" 2>/dev/null; wait "$child_pid" 2>/dev/null; fi; exit 0' TERM
+trap '' HUP
 trap 'exit 130' INT
 
 while true; do
-    # Launch claude with current args in foreground
-    claude "${current_args[@]}"
+    # Launch claude with mode args + current args in background
+    claude "${mode_args[@]}" "${current_args[@]}" &
+    child_pid=$!
+    wait "$child_pid" 2>/dev/null
     exit_code=$?
+    child_pid=""
+
+    # If wait was interrupted by a signal (exit_code > 128), the trap handler
+    # already dealt with it. For TERM the trap exits; for others, continue loop.
+    if [[ $exit_code -gt 128 ]]; then
+        continue
+    fi
 
     # Check for restart signal
     if [[ -f "$RESTART_FILE" ]]; then
@@ -36,12 +69,12 @@ while true; do
             # File has content: use those as new args
             # Split the string into an array (word splitting is intentional)
             read -ra current_args <<< "$new_opts"
-            echo "Restarting claude with: ${current_args[*]}"
+            echo "Restarting claude with: ${mode_args[*]:+${mode_args[*]} }${current_args[*]}"
         else
             # Empty file: restart with original launch options
             current_args=("${original_args[@]}")
-            if [[ ${#current_args[@]} -gt 0 ]]; then
-                echo "Restarting claude with: ${current_args[*]}"
+            if [[ ${#current_args[@]} -gt 0 || ${#mode_args[@]} -gt 0 ]]; then
+                echo "Restarting claude with: ${mode_args[*]:+${mode_args[*]} }${current_args[*]}"
             else
                 echo "Restarting claude..."
             fi
