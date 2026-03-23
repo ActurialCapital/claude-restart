@@ -96,4 +96,4 @@ Plans:
 | 6. Watchdog and Keep-Alive | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 7. Template Unit Foundation | v2.0 | 0/3 | Not started | - |
 | 8. Instrument Lifecycle | v2.0 | 1/2 | In progress | - |
-| 9. Autonomous Orchestra | v2.0 | 0/2 | Not started | - |
+| 9. Autonomous Orchestra | v2.0 | 1/2 | In progress | - |

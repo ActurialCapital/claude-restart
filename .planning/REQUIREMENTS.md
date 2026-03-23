@@ -33,11 +33,11 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 ### Autonomous Orchestra
 
-- [ ] **ORCH-01**: Orchestra is itself an instrument -- a Claude session with CLAUDE.md that runs as its own systemd service
-- [ ] **ORCH-02**: Orchestra can dispatch one-shot agents via `claude -p` in any instrument's project directory
-- [ ] **ORCH-03**: Orchestra can restart any instrument via `claude-restart --instance <name>` for context reset between phases
+- [x] **ORCH-01**: Orchestra is itself an instrument -- a Claude session with CLAUDE.md that runs as its own systemd service
+- [x] **ORCH-02**: Orchestra can dispatch one-shot agents via `claude -p` in any instrument's project directory
+- [x] **ORCH-03**: Orchestra can restart any instrument via `claude-restart --instance <name>` for context reset between phases
 - [ ] **ORCH-04**: Orchestra detects instruments added or removed while it is running (dynamic discovery)
-- [ ] **ORCH-05**: Orchestra always routes messages to the correct instrument based on project context
+- [x] **ORCH-05**: Orchestra always routes messages to the correct instrument based on project context
 
 ## Future Requirements
 
