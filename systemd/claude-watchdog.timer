@@ -1,0 +1,10 @@
+[Unit]
+Description=Claude Watchdog Timer - periodic forced restart
+
+[Timer]
+OnBootSec=CLAUDE_WATCHDOG_HOURS_PLACEHOLDERh
+OnUnitActiveSec=CLAUDE_WATCHDOG_HOURS_PLACEHOLDERh
+Unit=claude-watchdog.service
+
+[Install]
+WantedBy=timers.target
