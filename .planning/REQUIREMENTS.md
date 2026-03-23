@@ -33,7 +33,7 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 ### Autonomous Orchestra
 
-- [ ] **ORCH-01**: Orchestra is itself an instrument — a Claude session with CLAUDE.md that runs as its own systemd service
+- [ ] **ORCH-01**: Orchestra is itself an instrument -- a Claude session with CLAUDE.md that runs as its own systemd service
 - [ ] **ORCH-02**: Orchestra can dispatch one-shot agents via `claude -p` in any instrument's project directory
 - [ ] **ORCH-03**: Orchestra can restart any instrument via `claude-restart --instance <name>` for context reset between phases
 - [ ] **ORCH-04**: Orchestra detects instruments added or removed while it is running (dynamic discovery)
@@ -43,7 +43,7 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 ### Advanced Orchestra
 
-- **ORCH-06**: Orchestra can inject prompts into a running instrument's session (blocked on `claude inject` feature — issue #24947)
+- **ORCH-06**: Orchestra can inject prompts into a running instrument's session (blocked on `claude inject` feature -- issue #24947)
 - **ORCH-07**: Orchestra manages API rate limit budget across concurrent instruments
 
 ### Telegram Integration
@@ -60,7 +60,7 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 | Feature | Reason |
 |---------|--------|
-| Relay mode for orchestra | Autonomous only — direct access covers manual interaction |
+| Relay mode for orchestra | Autonomous only -- direct access covers manual interaction |
 | Orchestra making implementation decisions | Instruments hold project intelligence; orchestra is supervisor/dispatcher |
 | Running both modes simultaneously per instrument | Either remote-control or telegram, not both |
 | Session resume/context preservation across restarts | Not in scope for restart mechanism |
@@ -72,29 +72,29 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INST-01 | — | Pending |
-| INST-02 | — | Pending |
-| INST-03 | — | Pending |
-| INST-04 | — | Pending |
-| INST-05 | — | Pending |
-| LIFE-01 | — | Pending |
-| LIFE-02 | — | Pending |
-| LIFE-03 | — | Pending |
-| WDOG-04 | — | Pending |
-| WDOG-05 | — | Pending |
-| WRAP-05 | — | Pending |
-| WRAP-06 | — | Pending |
-| ORCH-01 | — | Pending |
-| ORCH-02 | — | Pending |
-| ORCH-03 | — | Pending |
-| ORCH-04 | — | Pending |
-| ORCH-05 | — | Pending |
+| INST-01 | Phase 7 | Pending |
+| INST-02 | Phase 7 | Pending |
+| INST-03 | Phase 7 | Pending |
+| INST-04 | Phase 7 | Pending |
+| INST-05 | Phase 7 | Pending |
+| WRAP-05 | Phase 7 | Pending |
+| WRAP-06 | Phase 7 | Pending |
+| LIFE-01 | Phase 8 | Pending |
+| LIFE-02 | Phase 8 | Pending |
+| LIFE-03 | Phase 8 | Pending |
+| WDOG-04 | Phase 8 | Pending |
+| WDOG-05 | Phase 8 | Pending |
+| ORCH-01 | Phase 9 | Pending |
+| ORCH-02 | Phase 9 | Pending |
+| ORCH-03 | Phase 9 | Pending |
+| ORCH-04 | Phase 9 | Pending |
+| ORCH-05 | Phase 9 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after initial definition*
+*Last updated: 2026-03-22 after roadmap creation*
