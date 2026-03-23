@@ -2,10 +2,15 @@
 # claude-service: manage the claude systemd user service
 set -euo pipefail
 
-SERVICE="claude.service"
+# Instance-aware service name (per D-14)
+# Usage: claude-service <command> [instance-name]
+# Defaults to "default" when instance name omitted (per D-07)
+INSTANCE="${2:-default}"
+SERVICE="claude@${INSTANCE}.service"
+WATCHDOG_TIMER="claude-watchdog.timer"
 
 usage() {
-    echo "Usage: claude-service {start|stop|restart|status|logs|watchdog|heartbeat}"
+    echo "Usage: claude-service {start|stop|restart|status|logs|watchdog|heartbeat} [instance]"
     echo ""
     echo "Commands:"
     echo "  start      Start the claude service"
@@ -15,32 +20,37 @@ usage() {
     echo "  logs       Follow service logs (journalctl)"
     echo "  watchdog   Show watchdog timer status"
     echo "  heartbeat  Show recent heartbeat log entries"
+    echo ""
+    echo "Instance defaults to 'default' if not specified."
+    echo "Examples:"
+    echo "  claude-service status              # status of default instance"
+    echo "  claude-service status myproject    # status of myproject instance"
 }
 
 case "${1:-}" in
     start)
         systemctl --user start "$SERVICE"
-        echo "Claude service started"
+        echo "Claude service started (${INSTANCE})"
         ;;
     stop)
         systemctl --user stop "$SERVICE"
-        echo "Claude service stopped"
+        echo "Claude service stopped (${INSTANCE})"
         ;;
     restart)
         systemctl --user restart "$SERVICE"
-        echo "Claude service restarted"
+        echo "Claude service restarted (${INSTANCE})"
         ;;
     status)
         systemctl --user status "$SERVICE"
         ;;
     logs)
-        journalctl --user -u claude -f
+        journalctl --user -u "claude@${INSTANCE}" -f
         ;;
     watchdog)
-        systemctl --user status claude-watchdog.timer
+        systemctl --user status "$WATCHDOG_TIMER"
         ;;
     heartbeat)
-        journalctl --user -u claude --grep="heartbeat sent" --no-pager -n 20
+        journalctl --user -u "claude@${INSTANCE}" --grep="heartbeat sent" --no-pager -n 20
         ;;
     --help|-h|"")
         usage
