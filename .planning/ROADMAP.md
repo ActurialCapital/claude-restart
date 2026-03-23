@@ -60,11 +60,11 @@ Plans:
   2. User can remove an instrument with one command that stops it, cleans up config, and deregisters it
   3. User can list all instruments and see each one's status (running/stopped/failed)
   4. Adding an instrument automatically enables its per-instance watchdog timer; removing disables it
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
+- [ ] 08-01-PLAN.md — Watchdog template units and install.sh migration
+- [ ] 08-02-PLAN.md — claude-service add/remove/list subcommands and lifecycle tests
 
 ### Phase 9: Autonomous Orchestra
 **Goal**: An optional autonomous Claude session supervises all instruments -- dispatching work, resetting context, spawning research agents, and adapting to fleet changes
@@ -95,5 +95,5 @@ Plans:
 | 5. systemd Service | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 6. Watchdog and Keep-Alive | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 7. Template Unit Foundation | v2.0 | 0/3 | Not started | - |
-| 8. Instrument Lifecycle | v2.0 | 0/? | Not started | - |
+| 8. Instrument Lifecycle | v2.0 | 0/2 | Not started | - |
 | 9. Autonomous Orchestra | v2.0 | 0/? | Not started | - |
