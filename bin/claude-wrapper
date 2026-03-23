@@ -2,6 +2,11 @@
 # claude-wrapper: runs claude in a loop, relaunching on restart signal
 
 RESTART_FILE="${CLAUDE_RESTART_FILE:-$HOME/.claude-restart}"
+
+# Change to working directory if set (systemd can't expand env vars in WorkingDirectory=)
+if [[ -n "${WORKING_DIRECTORY:-}" && -d "$WORKING_DIRECTORY" ]]; then
+    cd "$WORKING_DIRECTORY"
+fi
 MAX_RESTARTS="${CLAUDE_WRAPPER_MAX_RESTARTS:-10}"
 RESTART_DELAY="${CLAUDE_WRAPPER_DELAY:-2}"
 HEARTBEAT_INTERVAL="${CLAUDE_WRAPPER_HEARTBEAT_INTERVAL:-300}"

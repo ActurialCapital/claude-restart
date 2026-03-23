@@ -116,7 +116,9 @@ do_install_linux() {
         if [[ -n "$NODE_VERSION" ]]; then
             sed_inplace "s|NODEVERSION_PLACEHOLDER|$NODE_VERSION|g" "$ENV_FILE"
         else
-            sed_inplace "/NODEVERSION_PLACEHOLDER/d" "$ENV_FILE"
+            # Remove just the nvm segment from PATH (not the whole line)
+            # HOME_PLACEHOLDER already replaced at this point, so match with $HOME
+            sed_inplace "s|:$HOME/.nvm/versions/node/NODEVERSION_PLACEHOLDER/bin||g" "$ENV_FILE"
         fi
 
         # Prompt for API key
