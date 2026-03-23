@@ -39,11 +39,11 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 
 - ✓ systemd template units (`claude@.service`) for multi-instance instrument management — Validated in Phase 7
 - ✓ Instrument lifecycle tooling — add/remove/list with single command — Validated in Phase 8
-- [ ] Dynamic instrument awareness — detect hot-added/removed instruments while running
-- [ ] Optional autonomous orchestra — supervisor/dispatcher across projects
-- [ ] Orchestra uses `claude-restart` to reboot instruments between phases (context reset)
-- [ ] Orchestra spawns ad-hoc agents in project directories for research questions
-- [ ] All sessions use `remote-control` mode, both interaction models coexist (direct + orchestra)
+- ✓ Dynamic instrument awareness — detect hot-added/removed instruments while running — Validated in Phase 9
+- ✓ Optional autonomous orchestra — supervisor/dispatcher across projects — Validated in Phase 9
+- ✓ Orchestra uses `claude-restart` to reboot instruments between phases (context reset) — Validated in Phase 9
+- ✓ Orchestra spawns ad-hoc agents in project directories for research questions — Validated in Phase 9
+- ✓ All sessions use `remote-control` mode, both interaction models coexist (direct + orchestra) — Validated in Phase 9
 
 ### Out of Scope
 
@@ -119,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-23 after Phase 8 completion*
+*Last updated: 2026-03-23 after Phase 9 completion*
