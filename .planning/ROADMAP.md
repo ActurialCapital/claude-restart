@@ -44,7 +44,7 @@
   3. Each instrument is cgroup-limited by MemoryMax so one runaway instance cannot OOM the VPS
   4. Running scripts without an instance name behaves identically to v1.1 single-instance mode (backward compatibility)
   5. The wrapper passes `--name <instance>` to `claude remote-control` and `claude-restart --instance <name>` targets the correct instrument
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
 - [x] 07-01-PLAN.md — Create systemd template unit and updated env template
@@ -76,12 +76,13 @@ Plans:
   3. Orchestra can restart any instrument via `claude-restart --instance <name>` for context reset between work phases
   4. Orchestra detects instruments added or removed while it is running (reads manifest before each action)
   5. Orchestra routes messages to the correct instrument based on project context without manual configuration
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
 - [x] 09-01-PLAN.md — Infrastructure: channel flag support, env template updates, add-orchestra subcommand
 - [x] 09-02-PLAN.md — Orchestra CLAUDE.md: supervisor behavior specification with tools, workflow, and protocols
 - [x] 09-03-PLAN.md — Gap closure: fix remote-control permission flag and auto-confirm prompt in wrapper
+- [ ] 09-04-PLAN.md — Gap closure: fix channel flag argument ordering in wrapper
 
 ## Progress
 
