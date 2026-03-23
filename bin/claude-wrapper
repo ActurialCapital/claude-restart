@@ -38,6 +38,12 @@ case "${CLAUDE_CONNECT:-}" in
         ;;
 esac
 
+# Channel support for claude-peers (per D-08, D-11)
+channel_args=()
+if [[ -n "${CLAUDE_CHANNELS:-}" ]]; then
+    channel_args=("--dangerously-load-development-channels" "$CLAUDE_CHANNELS")
+fi
+
 # Track child process for signal forwarding
 child_pid=""
 heartbeat_pid=""
@@ -64,7 +70,7 @@ while true; do
         HEARTBEAT_FIFO=$(mktemp -u /tmp/claude-heartbeat.XXXXXX)
         mkfifo "$HEARTBEAT_FIFO"
         # Launch claude reading from FIFO for stdin
-        claude "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
+        claude "${mode_args[@]}" "${channel_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
         child_pid=$!
         # Start heartbeat writer in background
         (
@@ -84,7 +90,7 @@ while true; do
         ) &
         heartbeat_pid=$!
     else
-        claude "${mode_args[@]}" "${current_args[@]}" &
+        claude "${mode_args[@]}" "${channel_args[@]}" "${current_args[@]}" &
         child_pid=$!
     fi
     wait "$child_pid" 2>/dev/null
