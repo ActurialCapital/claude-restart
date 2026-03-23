@@ -63,7 +63,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Watchdog template units and install.sh migration
+- [x] 08-01-PLAN.md — Watchdog template units and install.sh migration
 - [ ] 08-02-PLAN.md — claude-service add/remove/list subcommands and lifecycle tests
 
 ### Phase 9: Autonomous Orchestra
@@ -95,5 +95,5 @@ Plans:
 | 5. systemd Service | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 6. Watchdog and Keep-Alive | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 7. Template Unit Foundation | v2.0 | 0/3 | Not started | - |
-| 8. Instrument Lifecycle | v2.0 | 0/2 | Not started | - |
+| 8. Instrument Lifecycle | v2.0 | 1/2 | In progress | - |
 | 9. Autonomous Orchestra | v2.0 | 0/? | Not started | - |
