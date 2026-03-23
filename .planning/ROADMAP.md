@@ -44,11 +44,12 @@
   3. Each instrument is cgroup-limited by MemoryMax so one runaway instance cannot OOM the VPS
   4. Running scripts without an instance name behaves identically to v1.1 single-instance mode (backward compatibility)
   5. The wrapper passes `--name <instance>` to `claude remote-control` and `claude-restart --instance <name>` targets the correct instrument
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md — Create systemd template unit and updated env template
+- [ ] 07-02-PLAN.md — Make wrapper, restart, and service scripts instance-aware
+- [ ] 07-03-PLAN.md — Update installer with template deployment and v1.1 migration
 
 ### Phase 8: Instrument Lifecycle
 **Goal**: User manages the full instrument fleet with single commands, and every instrument automatically gets a watchdog timer
@@ -93,6 +94,6 @@ Plans:
 | 4. Wrapper Hardening | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 5. systemd Service | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 6. Watchdog and Keep-Alive | v1.1 | 2/2 | Complete | 2026-03-22 |
-| 7. Template Unit Foundation | v2.0 | 0/? | Not started | - |
+| 7. Template Unit Foundation | v2.0 | 0/3 | Not started | - |
 | 8. Instrument Lifecycle | v2.0 | 0/? | Not started | - |
 | 9. Autonomous Orchestra | v2.0 | 0/? | Not started | - |
