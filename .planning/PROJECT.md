@@ -34,16 +34,17 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 - ✓ Keep-alive heartbeat via FIFO stdin in telegram mode — v1.1
 - ✓ Installer deploys watchdog timer/oneshot with configurable interval — v1.1
 - ✓ claude-service watchdog and heartbeat status subcommands — v1.1
+- ✓ systemd template units (`claude@.service`) for multi-instance instrument management — v2.0
+- ✓ Instrument lifecycle tooling — add/remove/list with single command — v2.0
+- ✓ Dynamic instrument awareness — detect hot-added/removed instruments while running — v2.0
+- ✓ Optional autonomous orchestra — supervisor/dispatcher across projects — v2.0
+- ✓ Orchestra uses `claude-restart` to reboot instruments between phases (context reset) — v2.0
+- ✓ Orchestra spawns ad-hoc agents in project directories for research questions — v2.0
+- ✓ All sessions use `remote-control` mode, both interaction models coexist (direct + orchestra) — v2.0
 
 ### Active
 
-- ✓ systemd template units (`claude@.service`) for multi-instance instrument management — Validated in Phase 7
-- ✓ Instrument lifecycle tooling — add/remove/list with single command — Validated in Phase 8
-- ✓ Dynamic instrument awareness — detect hot-added/removed instruments while running — Validated in Phase 9
-- ✓ Optional autonomous orchestra — supervisor/dispatcher across projects — Validated in Phase 9
-- ✓ Orchestra uses `claude-restart` to reboot instruments between phases (context reset) — Validated in Phase 9
-- ✓ Orchestra spawns ad-hoc agents in project directories for research questions — Validated in Phase 9
-- ✓ All sessions use `remote-control` mode, both interaction models coexist (direct + orchestra) — Validated in Phase 9
+(none — all v2.0 requirements validated)
 
 ### Out of Scope
 
@@ -55,17 +56,19 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 - Orchestra relay mode — autonomous only; direct access covers manual interaction
 - Orchestra making project-level implementation decisions — instruments hold project intelligence
 
-## Current Milestone: v2.0 Multi-Instance Orchestration
+## Current Milestone: v2.0 Multi-Instance Orchestration — COMPLETE
 
 **Goal:** Run multiple isolated Claude instruments on a VPS with easy lifecycle management and an optional autonomous orchestra that supervises, dispatches, and controls instruments across separate projects.
 
-**Target features:**
+**Status:** All 9 phases complete. 2 human verification items pending (runtime VPS testing).
+
+**Delivered:**
 - systemd template units for multi-instance instrument management
 - Instrument lifecycle tooling (add/remove/list)
 - Dynamic instrument awareness (hot add/remove while running)
 - Optional autonomous orchestra (supervisor/dispatcher + ad-hoc research agents)
 - Orchestra uses claude-restart for instrument context reset between phases
-- All sessions use remote-control mode
+- All sessions use remote-control mode with correct permission flags
 
 ## Context
 
