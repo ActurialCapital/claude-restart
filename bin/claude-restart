@@ -1,10 +1,40 @@
 #!/bin/bash
 # claude-restart: trigger a claude restart with new CLI options
+# Usage: claude-restart [--instance <name>] [options...]
 # Writes options to restart file and kills the claude process.
 # The wrapper (claude-wrapper) detects the file and relaunches.
 set -euo pipefail
 
-RESTART_FILE="${CLAUDE_RESTART_FILE:-$HOME/.claude-restart}"
+# Parse --instance flag
+INSTANCE=""
+args=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --instance)
+            INSTANCE="${2:-}"
+            if [[ -z "$INSTANCE" ]]; then
+                echo "claude-restart: --instance requires a name argument" >&2
+                exit 1
+            fi
+            shift 2
+            ;;
+        *)
+            args+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${args[@]+"${args[@]}"}"
+
+# Instance-aware restart file path
+if [[ -n "$INSTANCE" ]]; then
+    RESTART_FILE="$HOME/.config/claude-restart/$INSTANCE/restart"
+elif [[ -n "${CLAUDE_RESTART_FILE:-}" ]]; then
+    RESTART_FILE="$CLAUDE_RESTART_FILE"
+else
+    RESTART_FILE="$HOME/.claude-restart"
+fi
+
 DEFAULT_OPTS="${CLAUDE_RESTART_DEFAULT_OPTS:-}"
 
 # Determine options to write
@@ -13,6 +43,9 @@ if [[ $# -gt 0 ]]; then
 else
     opts="$DEFAULT_OPTS"
 fi
+
+# Ensure restart file directory exists
+mkdir -p "$(dirname "$RESTART_FILE")"
 
 # Write restart file
 if [[ -n "$opts" ]]; then
@@ -28,16 +61,21 @@ else
     echo "Restarting claude..."
 fi
 
-# Find and kill claude process
-if [[ -n "${CLAUDE_RESTART_TARGET_PID:-}" ]]; then
+# Kill/restart the target instance
+if [[ -n "$INSTANCE" ]]; then
+    # Per D-13: use systemctl for instance restart (no PID hunting)
+    systemctl --user restart "claude@${INSTANCE}.service" 2>/dev/null || {
+        echo "claude-restart: warning: systemctl restart failed for claude@${INSTANCE}" >&2
+        echo "claude-restart: restart file written; restart will occur when instance exits" >&2
+    }
+elif [[ -n "${CLAUDE_RESTART_TARGET_PID:-}" ]]; then
     # Testing override: use specified PID directly
     target_pid="$CLAUDE_RESTART_TARGET_PID"
+    kill -TERM "$target_pid" 2>/dev/null || true
 else
-    # Walk PPID chain to find claude (node) process
-    # Process chain: wrapper -> claude (node) -> bash (sandbox) -> this script
+    # Fallback: PPID walk for non-systemd environments (macOS dev)
     target_pid=""
     current_pid="$$"
-
     for i in $(seq 1 5); do
         parent=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d ' ')
         if [[ -z "$parent" || "$parent" == "0" || "$parent" == "1" ]]; then
@@ -50,11 +88,10 @@ else
         fi
         current_pid="$parent"
     done
-fi
-
-if [[ -n "$target_pid" ]]; then
-    kill -TERM "$target_pid" 2>/dev/null || true
-else
-    echo "claude-restart: warning: could not find claude process to kill" >&2
-    echo "claude-restart: restart file written; restart will occur when claude exits" >&2
+    if [[ -n "$target_pid" ]]; then
+        kill -TERM "$target_pid" 2>/dev/null || true
+    else
+        echo "claude-restart: warning: could not find claude process to kill" >&2
+        echo "claude-restart: restart file written; restart will occur when claude exits" >&2
+    fi
 fi
