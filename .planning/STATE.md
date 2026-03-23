@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Instance Orchestration
-status: Ready to plan
-stopped_at: Phase 8 context gathered
-last_updated: "2026-03-23T04:59:10.594Z"
+status: Ready to execute
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-23T14:15:26.264Z"
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 3
+  total_plans: 5
   completed_plans: 3
 ---
 
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
-**Current focus:** Phase 07 — template-unit-foundation
+**Current focus:** Phase 08 — instrument-lifecycle
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
+Phase: 08 (instrument-lifecycle) — EXECUTING
+Plan: 2 of 2
 
 ## Accumulated Context
 
@@ -36,6 +36,7 @@ Full decision history archived in milestones/v1.0-ROADMAP.md and milestones/v1.1
 - [Phase 07]: MemoryMax applied via ExecStartPre + systemctl set-property (env vars not supported in systemd resource control directives)
 - [Phase 07]: Scripts use CLAUDE_INSTANCE_NAME and --instance flag for instance targeting, defaulting to backward-compatible behavior
 - [Phase 07]: Migration creates env.v1-backup before removing flat env file; WorkingDirectory extracted from old claude.service when possible
+- [Phase 08]: Hardcoded 8h timer intervals in watchdog template (systemd timer directives cannot read env vars)
 
 ### Key v2.0 Architecture Decisions
 
@@ -60,6 +61,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T04:59:10.590Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-instrument-lifecycle/08-CONTEXT.md
+Last session: 2026-03-23T14:15:26.261Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None

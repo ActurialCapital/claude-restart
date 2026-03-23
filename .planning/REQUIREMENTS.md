@@ -23,7 +23,7 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 ### Watchdog Migration
 
-- [ ] **WDOG-04**: Watchdog timer is templated per-instance (`claude-watchdog@.timer`) and paired automatically with instrument lifecycle
+- [x] **WDOG-04**: Watchdog timer is templated per-instance (`claude-watchdog@.timer`) and paired automatically with instrument lifecycle
 - [ ] **WDOG-05**: Adding an instrument enables its watchdog timer; removing an instrument disables it
 
 ### Wrapper Adaptation
@@ -82,7 +82,7 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 | LIFE-01 | Phase 8 | Pending |
 | LIFE-02 | Phase 8 | Pending |
 | LIFE-03 | Phase 8 | Pending |
-| WDOG-04 | Phase 8 | Pending |
+| WDOG-04 | Phase 8 | Complete |
 | WDOG-05 | Phase 8 | Pending |
 | ORCH-01 | Phase 9 | Pending |
 | ORCH-02 | Phase 9 | Pending |
