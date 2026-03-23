@@ -91,7 +91,12 @@ do_install_linux() {
     cp "$SCRIPT_DIR/claude-service" "$INSTALL_DIR/claude-service"
     chmod +x "$INSTALL_DIR/claude-service"
 
-    # 1b. Migrate v1.1 env if present (per D-08)
+    # 1b. Copy env.template to config dir for claude-service add (Phase 8)
+    mkdir -p "$ENV_DIR"
+    cp "$SCRIPT_DIR/../systemd/env.template" "$ENV_DIR/env.template"
+    echo "Installed env.template to $ENV_DIR/env.template"
+
+    # 1c. Migrate v1.1 env if present (per D-08)
     migrate_v1_env
 
     # 2. Prompt for working directory (stored in env file per D-04)
