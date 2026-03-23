@@ -55,6 +55,14 @@ else
     fail "wrapper missing CLAUDE_CHANNELS guard"
 fi
 
+# Test 7: channel_args appears before mode_args in all invocations (regression for UAT blocker)
+BAD_ORDER=$(grep 'claude "\${' "$WRAPPER" | grep -v '^\s*#' | grep -c 'mode_args.*channel_args' || true)
+if [[ "$BAD_ORDER" -eq 0 ]]; then
+    pass "channel_args before mode_args in all invocations (argument order)"
+else
+    fail "found $BAD_ORDER invocations with mode_args before channel_args"
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1
