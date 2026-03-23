@@ -82,7 +82,7 @@ while true; do
         HEARTBEAT_FIFO=$(mktemp -u /tmp/claude-heartbeat.XXXXXX)
         mkfifo "$HEARTBEAT_FIFO"
         # Launch claude reading from FIFO for stdin
-        claude "${mode_args[@]}" "${channel_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
+        claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
         child_pid=$!
         # Start heartbeat writer in background
         (
@@ -103,10 +103,10 @@ while true; do
         heartbeat_pid=$!
     elif [[ "${CLAUDE_CONNECT:-}" == "remote-control" ]]; then
         # Auto-confirm "Enable Remote Control?" prompt for non-interactive service startup
-        echo "y" | claude "${mode_args[@]}" "${channel_args[@]}" "${current_args[@]}" &
+        echo "y" | claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" &
         child_pid=$!
     else
-        claude "${mode_args[@]}" "${channel_args[@]}" "${current_args[@]}" &
+        claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" &
         child_pid=$!
     fi
     wait "$child_pid" 2>/dev/null
