@@ -37,7 +37,7 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 
 ### Active
 
-- [ ] systemd template units (`claude@.service`) for multi-instance instrument management
+- ✓ systemd template units (`claude@.service`) for multi-instance instrument management — Validated in Phase 7
 - [ ] Instrument lifecycle tooling — add/remove/list with single command
 - [ ] Dynamic instrument awareness — detect hot-added/removed instruments while running
 - [ ] Optional autonomous orchestra — supervisor/dispatcher across projects
@@ -72,7 +72,7 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 Shipped v1.1 with 260 LOC shell + 918 LOC tests across 3 test suites (82 assertions).
 Tech stack: Pure bash, zsh shell integration, systemd for Linux service management.
 Scripts: `bin/claude-wrapper`, `bin/claude-restart`, `bin/install.sh`, `bin/claude-service`.
-Artifacts: `systemd/claude.service`, `systemd/claude-watchdog.timer`, `systemd/claude-watchdog.service`, `systemd/env.template`.
+Artifacts: `systemd/claude@.service` (template unit), `systemd/claude.service` (legacy), `systemd/claude-watchdog.timer`, `systemd/claude-watchdog.service`, `systemd/env.template`.
 
 VPS environment: Personal Linux server with systemd and tmux. User manages VPS from phone, running multiple projects each with its own Claude instance and cloned repository. Architecture: "instruments" (isolated Claude sessions per project) + optional "orchestra" (autonomous supervisor). All sessions use `claude remote-control` for phone interaction. Two interaction models coexist: direct instrument access and centralized orchestra access.
 
@@ -119,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-22 after v2.0 milestone start*
+*Last updated: 2026-03-23 after Phase 7 completion*
