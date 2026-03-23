@@ -1,21 +1,22 @@
 ---
-status: resolved
+status: diagnosed
 phase: 09-autonomous-orchestra
 source: [09-VERIFICATION.md]
 started: 2026-03-23T17:50:00Z
-updated: 2026-03-24T00:00:00Z
+updated: 2026-03-23T00:00:00Z
 ---
 
 ## Current Test
 
-[testing complete]
+[testing complete — 2 items outstanding]
 
 ## Tests
 
 ### 1. Dynamic Instrument Discovery at Runtime
 expected: Deploy orchestra and add a new instrument while orchestra is running. On the next GSD loop cycle, orchestra discovers the new instrument via list_peers, spawns an assessment agent, and begins driving it.
-result: pending
-notes: "Previous blocker (channel_args ordering) resolved by 09-04. Needs re-test on VPS to confirm end-to-end flow."
+result: issue
+reported: "Three issues prevent orchestra from staying alive: (1) echo 'y' | closes stdin — EOF kills remote-control process shortly after startup. (2) 'y' sometimes leaks into the spawned Claude session instead of being consumed by the Remote Control confirmation prompt, producing 'It looks like you sent y' responses. (3) Session is one-shot — runs CLAUDE.md, finds no instruments, asks 'what would you like me to do?', gets no response, and exits. The remote-control server doesn't persist after session ends. Net result: orchestra service dies within 5-20 seconds on every attempt."
+severity: blocker
 
 ### 2. Instrument Removal Handling
 expected: Remove an instrument (stop its service) while orchestra is running. Orchestra stops sending messages to the removed instrument and does not error-loop on stale peer IDs.
@@ -35,8 +36,8 @@ reason: "Blocked — requires VPS with running instance; cannot test locally"
 
 total: 3
 passed: 1
-issues: 0
-pending: 1
+issues: 1
+pending: 0
 skipped: 0
 blocked: 1
 
@@ -55,3 +56,18 @@ blocked: 1
   severity: blocker
   test: 1
   resolved_by: 09-04-PLAN.md
+
+- truth: "Orchestra service stays running and maintains persistent remote-control session"
+  status: failed
+  reason: "User reported: Three interrelated stdin/lifecycle issues — (1) echo 'y' | causes EOF killing the process, (2) 'y' leaks into session instead of confirmation prompt, (3) session is one-shot and exits when no work arrives"
+  severity: blocker
+  test: 1
+  root_cause: "claude-wrapper line 106 uses `echo 'y' | claude ...` for remote-control mode. echo writes 'y' then closes the pipe (EOF). This causes all three symptoms: (1) EOF on stdin kills the remote-control server, (2) no synchronization between 'y' write and the confirmation prompt means 'y' can leak into the session, (3) with stdin at EOF the session has no way to receive further input and exits after CLAUDE.md startup. The telegram mode (lines 82-103) already solves this correctly with a FIFO + heartbeat writer pattern that keeps stdin open."
+  artifacts:
+    - path: "bin/claude-wrapper"
+      lines: "104-107"
+      issue: "echo 'y' | claude pattern causes immediate EOF on stdin — kills remote-control server"
+  missing:
+    - "Remote-control mode needs FIFO-based stdin (like telegram mode lines 82-103)"
+    - "Write 'y\\n' to FIFO for confirmation prompt, then keep fd open"
+    - "Add heartbeat writer to keep remote-control session alive"
