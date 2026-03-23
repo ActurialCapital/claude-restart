@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Instance Orchestration
-status: Ready to plan
-stopped_at: Phase 9 context gathered
-last_updated: "2026-03-23T16:09:40.050Z"
+status: Executing
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-03-23T17:33:00Z"
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
-**Current focus:** Phase 08 — instrument-lifecycle
+**Current focus:** Phase 09 — autonomous-orchestra
 
 ## Current Position
 
 Phase: 9
-Plan: Not started
+Plan: 1 of 2 complete
 
 ## Accumulated Context
 
@@ -39,6 +39,7 @@ Full decision history archived in milestones/v1.0-ROADMAP.md and milestones/v1.1
 - [Phase 08]: Hardcoded 8h timer intervals in watchdog template (systemd timer directives cannot read env vars)
 - [Phase 08]: API key and PATH copied from default instance env for non-interactive orchestra automation
 - [Phase 08]: Instrument working directories under ~/instruments/<name> by convention
+- [Phase 09]: Test extraction uses sed function body isolation instead of grep -A for reliability
 
 ### Key v2.0 Architecture Decisions
 
@@ -63,6 +64,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T16:09:40.047Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-autonomous-orchestra/09-CONTEXT.md
+Last session: 2026-03-23T17:33:00Z
+Stopped at: Completed 09-01-PLAN.md
+Resume file: None
