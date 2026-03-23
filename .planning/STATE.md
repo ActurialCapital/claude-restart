@@ -2,15 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Instance Orchestration
-status: planning
-stopped_at: Phase 7 context gathered
-last_updated: "2026-03-23T03:34:54.523Z"
-last_activity: 2026-03-22 -- Roadmap created for v2.0
+status: Ready to execute
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-23T03:50:54.199Z"
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
 ---
 
 # Project State
@@ -20,16 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
-**Current focus:** Phase 7 - Template Unit Foundation
+**Current focus:** Phase 07 — template-unit-foundation
 
 ## Current Position
 
-Phase: 7 of 9 (Template Unit Foundation) -- 1 of 3 in v2.0
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-03-22 -- Roadmap created for v2.0
-
-Progress (v2.0): [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%
+Phase: 07 (template-unit-foundation) — EXECUTING
+Plan: 2 of 3
 
 ## Accumulated Context
 
@@ -37,6 +32,8 @@ Progress (v2.0): [░░░░░░░░░░░░░░░░░░░░�
 
 Decisions are logged in PROJECT.md Key Decisions table.
 Full decision history archived in milestones/v1.0-ROADMAP.md and milestones/v1.1-ROADMAP.md.
+
+- [Phase 07]: MemoryMax applied via ExecStartPre + systemctl set-property (env vars not supported in systemd resource control directives)
 
 ### Key v2.0 Architecture Decisions
 
@@ -61,6 +58,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T03:34:54.520Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-template-unit-foundation/07-CONTEXT.md
+Last session: 2026-03-23T03:50:54.197Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None

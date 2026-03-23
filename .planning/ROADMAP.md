@@ -47,7 +47,7 @@
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Create systemd template unit and updated env template
+- [x] 07-01-PLAN.md — Create systemd template unit and updated env template
 - [ ] 07-02-PLAN.md — Make wrapper, restart, and service scripts instance-aware
 - [ ] 07-03-PLAN.md — Update installer with template deployment and v1.1 migration
 

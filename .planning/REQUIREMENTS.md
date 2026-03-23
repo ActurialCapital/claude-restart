@@ -9,10 +9,10 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 ### Multi-Instance Foundation
 
-- [ ] **INST-01**: systemd template unit (`claude@.service`) runs any instrument by name with per-instance EnvironmentFile
-- [ ] **INST-02**: Each instrument has isolated env file at `~/.config/claude-restart/<name>/env` with its own API key, CLAUDE_CONNECT, working directory
-- [ ] **INST-03**: Each instrument has isolated restart file (no shared `~/.claude-restart`) via per-instance `CLAUDE_RESTART_FILE`
-- [ ] **INST-04**: Each instrument has `MemoryMax` cgroup limit in systemd to prevent OOM from memory leaks
+- [x] **INST-01**: systemd template unit (`claude@.service`) runs any instrument by name with per-instance EnvironmentFile
+- [x] **INST-02**: Each instrument has isolated env file at `~/.config/claude-restart/<name>/env` with its own API key, CLAUDE_CONNECT, working directory
+- [x] **INST-03**: Each instrument has isolated restart file (no shared `~/.claude-restart`) via per-instance `CLAUDE_RESTART_FILE`
+- [x] **INST-04**: Each instrument has `MemoryMax` cgroup limit in systemd to prevent OOM from memory leaks
 - [ ] **INST-05**: When no instance name is provided, all scripts behave identically to v1.1 single-instance mode
 
 ### Instrument Lifecycle
@@ -72,10 +72,10 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INST-01 | Phase 7 | Pending |
-| INST-02 | Phase 7 | Pending |
-| INST-03 | Phase 7 | Pending |
-| INST-04 | Phase 7 | Pending |
+| INST-01 | Phase 7 | Complete |
+| INST-02 | Phase 7 | Complete |
+| INST-03 | Phase 7 | Complete |
+| INST-04 | Phase 7 | Complete |
 | INST-05 | Phase 7 | Pending |
 | WRAP-05 | Phase 7 | Pending |
 | WRAP-06 | Phase 7 | Pending |
