@@ -20,7 +20,7 @@ current_args=("$@")
 mode_args=()
 case "${CLAUDE_CONNECT:-}" in
     remote-control)
-        mode_args=("remote-control")
+        mode_args=("remote-control" "--permission-mode" "bypassPermissions")
         if [[ -n "${CLAUDE_INSTANCE_NAME:-}" && "${CLAUDE_INSTANCE_NAME}" != "default" ]]; then
             mode_args+=("--name" "$CLAUDE_INSTANCE_NAME")
         fi
@@ -37,6 +37,18 @@ case "${CLAUDE_CONNECT:-}" in
         exit 1
         ;;
 esac
+
+# Filter --dangerously-skip-permissions from current_args in remote-control mode
+# (remote-control uses --permission-mode bypassPermissions instead)
+if [[ "${CLAUDE_CONNECT:-}" == "remote-control" ]]; then
+    filtered_args=()
+    for arg in "${current_args[@]}"; do
+        if [[ "$arg" != "--dangerously-skip-permissions" ]]; then
+            filtered_args+=("$arg")
+        fi
+    done
+    current_args=("${filtered_args[@]}")
+fi
 
 # Channel support for claude-peers (per D-08, D-11)
 channel_args=()
@@ -89,6 +101,10 @@ while true; do
             exec 3>&- 2>/dev/null
         ) &
         heartbeat_pid=$!
+    elif [[ "${CLAUDE_CONNECT:-}" == "remote-control" ]]; then
+        # Auto-confirm "Enable Remote Control?" prompt for non-interactive service startup
+        echo "y" | claude "${mode_args[@]}" "${channel_args[@]}" "${current_args[@]}" &
+        child_pid=$!
     else
         claude "${mode_args[@]}" "${channel_args[@]}" "${current_args[@]}" &
         child_pid=$!
