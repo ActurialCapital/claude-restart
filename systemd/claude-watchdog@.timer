@@ -1,0 +1,10 @@
+[Unit]
+Description=Claude Watchdog Timer for %i - periodic forced restart
+
+[Timer]
+OnBootSec=8h
+OnUnitActiveSec=8h
+Unit=claude-watchdog@%i.service
+
+[Install]
+WantedBy=timers.target
