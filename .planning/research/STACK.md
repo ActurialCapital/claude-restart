@@ -1,8 +1,8 @@
 # Stack Research
 
-**Domain:** VPS reliability for CLI process management (systemd, watchdog, keep-alive)
-**Researched:** 2026-03-20
-**Confidence:** HIGH (systemd primitives are stable and well-documented; bash patterns are established)
+**Domain:** Multi-instance Claude Code orchestration on Linux VPS
+**Researched:** 2026-03-22
+**Confidence:** HIGH
 
 ## Recommended Stack
 
@@ -10,146 +10,203 @@
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| systemd user services | 252+ (most current distros) | Auto-restart on crash, boot persistence | Native Linux init system; no external deps; handles restart, backoff, and failure limits without added tooling |
-| `systemd-notify` CLI | bundled with systemd | Send WATCHDOG=1 and READY=1 from bash | Bash cannot call `sd_notify()` C API directly; `systemd-notify` wraps the Unix socket protocol without requiring libsystemd in scripts |
-| `loginctl enable-linger` | bundled with systemd | Keep user services running after SSH logout | Without linger, user systemd units stop when the last session ends; linger spawns user manager at boot and keeps it across logouts |
-| bash (existing) | 5.x | Wrapper loop and watchdog ping background loop | No new language dependency; watchdog ping is a 3-line background subshell inside the existing wrapper |
-| tmux | 3.x (any recent) | Session persistence across SSH disconnects | Claude's TUI requires an attached terminal; tmux decouples the terminal from the SSH connection; SSH disconnect does not kill the session |
+| systemd template units (`claude@.service`) | systemd 249+ (any modern distro) | Multi-instance service management | Native to Linux, zero dependencies. `%i` specifier gives per-instance config for free. Already using systemd for single-instance -- template units are the natural extension, not a new technology. |
+| Claude CLI `remote-control` server mode | Claude Code v2.1.51+ | Per-instrument session hosting | `claude remote-control --name "<project>"` runs a headless server accepting connections via claude.ai/code and mobile app. Each instrument is one `claude@<name>.service`. No local ports, no tunnel config. |
+| Claude CLI `-p` (print/headless) mode | Claude Code v2.1.51+ | Orchestra ad-hoc dispatch | `claude -p "prompt" --output-format json` spawns one-shot tasks in any project directory. Session continuation via `--resume <session_id>` enables multi-turn orchestration. Orchestra uses this to query instruments' codebases. |
+| Plain text manifest (one name per line) | N/A | Instrument registry | Simplest format parsable by bash with zero dependencies. File at `~/.config/claude-restart/instruments` lists instrument names, one per line. Bash reads with `while read`. Comments with `#`. |
+| bash 4+ (existing) | 4.0+ | All scripting | Entire v1.1 codebase is 260 LOC of bash + 918 LOC tests. No reason to introduce Python/Node.js for orchestration glue. |
+| jq | 1.6+ | Parse JSON from `claude -p` output | Only new external dependency. Orchestra extracts `session_id`, `result`, and structured output from headless claude calls. Available in every Linux package manager. |
 
 ### Supporting Technologies
 
 | Technology | Version | Purpose | When to Use |
 |------------|---------|---------|-------------|
-| `systemctl --user` | bundled with systemd | Manage user-scoped services without root | All service management for this project; system-level (`sudo systemctl`) is unnecessary for a personal VPS user account |
-| `~/.config/environment.d/*.conf` | systemd 233+ | Inject environment variables into user service | User services do not inherit shell env (PATH, CLAUDE_RESTART_FILE, etc.); this is the canonical way to set them for systemd user units |
-| `~/.ssh/config` ServerAliveInterval | OpenSSH 3.8+ (universal) | Prevent SSH client-side idle disconnect | Keeps the SSH connection alive from the client; complements tmux for users who want to stay connected rather than detach |
+| systemd drop-in overrides | systemd 249+ | Per-instance WorkingDirectory | `claude@myproject.service.d/workdir.conf` sets WorkingDirectory without modifying the template unit. Created by `claude-service add`. |
+| `systemctl --user list-units` | bundled | Enumerate running instruments | `systemctl --user list-units 'claude@*.service' --no-legend` gives all active instances with state. No custom registry needed for status. |
+| `journalctl --user -u claude@<name>` | bundled | Per-instrument log access | Filtered logs per instrument, already working for single instance. Template unit inherits this automatically. |
+| Per-instance EnvironmentFile | systemd | Instance-specific config | `EnvironmentFile=%h/.config/claude-restart/env.%i` loads instance overrides (restart file path, instance name) on top of shared base config. |
 
-### What Is NOT Being Added
+### Development Tools
 
-This project stays pure bash + systemd unit files. No external languages, daemons, or monitoring agents are introduced.
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| shellcheck | Bash linting | Already in use for v1.1 |
+| bats-core | Bash testing | Already in use -- 82 assertions across 3 test suites in v1.1 |
 
-## Unit File Architecture
+## What Is NOT Being Added
 
-### Service Type Decision
-
-**Use `Type=forking` for the systemd unit that starts a tmux session containing claude-wrapper.**
-
-Rationale: `tmux new-session -d` forks and the parent exits immediately — this is exactly the Type=forking lifecycle. `Type=simple` would cause systemd to track the wrong PID (the tmux command itself rather than the server). `Type=notify` is only appropriate when the `ExecStart` process itself sends `READY=1`, which claude-wrapper does not do natively (it is a TUI, not a notify-aware daemon).
-
-Alternative: `Type=oneshot` with `RemainAfterExit=yes` is used by many tmux-as-service examples and avoids the PID tracking problem of Type=forking. This is acceptable when watchdog signaling is not needed. For this project (no active watchdog from inside the tmux session), `Type=oneshot RemainAfterExit=yes` is the safer choice.
-
-**Recommendation: `Type=oneshot` with `RemainAfterExit=yes` and `KillMode=none`.**
-
-`KillMode=none` is required so that `systemctl --user stop` does not kill the tmux session (and thus claude) without giving it a chance to exit cleanly.
-
-### Watchdog Decision
-
-**Watchdog is NOT recommended as a systemd unit directive for this project.** Here is why:
-
-- `WatchdogSec` + `Type=notify` requires the foreground process to call `systemd-notify WATCHDOG=1` on a regular cadence. Claude (the node process) does not do this.
-- The wrapper script (claude-wrapper) runs inside tmux, not as the direct `ExecStart` process. Systemd cannot monitor it as a notify-aware service through tmux.
-- The problem to solve (Telegram plugin goes unresponsive without crashing) is an application-level hang, not a process crash. Systemd's `WatchdogSec` detects the service process disappearing — it does not detect application-level hangs.
-
-**Alternative watchdog approach (correct for this use case):** A separate bash watchdog script, run on a cron/systemd timer, that checks for application-level responsiveness — e.g., monitoring a heartbeat file that claude-wrapper touches on each restart, or detecting stale process state via `ps` + elapsed time heuristics. This does not require `Type=notify` and works inside the tmux session boundary.
-
-### Keep-Alive Decision
-
-**Claude Telegram plugin idle timeout is an application-level event, not an SSH/network event.** The plugin goes unresponsive when Claude has no work to do and the Telegram channel sits idle. The correct keep-alive is an activity signal to the claude session itself (e.g., a periodic no-op message or a `/clear` via the restart mechanism), not an SSH keepalive.
-
-SSH keepalive (`ServerAliveInterval`) prevents SSH client disconnects and is worth documenting but does not address the plugin hang.
+This project stays pure bash + systemd + jq. No Node.js runtime, no Python, no Docker, no additional process managers.
 
 ## Installation
 
-No `npm install` or package installation. All new artifacts are plain files:
-
 ```bash
-# Create user systemd unit directory (if not exists)
-mkdir -p ~/.config/systemd/user
+# Only new external dependency
+sudo apt install jq    # Debian/Ubuntu
+# or: dnf install jq   # Fedora
+# or: brew install jq   # macOS dev
 
-# Place unit file (created by install.sh extension)
-# ~/.config/systemd/user/claude.service
-
-# Create environment config directory
-mkdir -p ~/.config/environment.d
-
-# Place env file
-# ~/.config/environment.d/claude.conf
-
-# Enable lingering (run once, requires root or the user themselves)
-loginctl enable-linger "$USER"
-
-# Enable and start the service
-systemctl --user daemon-reload
-systemctl --user enable claude.service
-systemctl --user start claude.service
+# Everything else is already installed or bundled with systemd
 ```
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| systemd user service | cron `@reboot` | On systems without systemd (SysV init, BSD); cron has no restart-on-crash, no proper dependency ordering |
-| systemd user service | `nohup` + PID file managed in bash | Appropriate if no systemd; adds ~30 LOC of fragile bash to track PID, handle crashes, and restart; inferior to systemd |
-| `Type=oneshot RemainAfterExit=yes` | `Type=forking` with PIDFile | Type=forking prevents multiple tmux sessions on the same user; Type=oneshot is cleaner for this use case |
-| Application-level watchdog timer | `WatchdogSec` in unit file | `WatchdogSec` is appropriate when the ExecStart process itself can send `WATCHDOG=1`; not usable through tmux indirection |
-| `loginctl enable-linger` | system-level service (`/etc/systemd/system/`) | System-level service requires root every time; linger enables user ownership of the service lifecycle |
-| tmux | screen | tmux has better session management, scriptable panes, and is the current standard; screen is largely deprecated |
-| `~/.config/environment.d/` | `EnvironmentFile=` in unit | Both work; `environment.d` applies to all user services and survives unit file regeneration by install.sh |
-| SSH `ServerAliveInterval` | Nothing | Without it, idle SSH connections drop; the client-side config is the simplest fix with no server-side changes needed |
+| Plain text manifest (one name per line) | JSON manifest parsed with `jq` | If instruments need metadata beyond name+directory (e.g., priority, resource limits, tags). Not needed now -- systemd EnvironmentFile handles per-instance config. |
+| Plain text manifest | TOML manifest | Never for this project. TOML requires `stoml` or similar parser -- unnecessary dependency for a list of names. |
+| `claude -p` for orchestra dispatch | Claude Agent SDK (TypeScript/Python) | If building a standalone orchestration app with hooks, approval callbacks, or structured multi-turn. Overkill here -- the orchestra IS a Claude session using bash tools, not a Node.js application. |
+| `claude remote-control` (server mode) | `claude --remote-control` (interactive + RC) | `--remote-control` flag is for development/debugging when you want local terminal access alongside remote. Production instruments use pure `remote-control` server mode. |
+| Per-instance EnvironmentFile | Single shared EnvironmentFile | Never. Each instrument needs its own restart file path and instance name. Per-instance `env.%i` files are the systemd-native solution. |
+| systemd template units | Docker containers per instance | Never. Adds massive complexity for zero benefit -- these are single-user VPS instances running the same binary with different working directories. |
+| `systemctl --user list-units claude@*` | Custom PID tracking / process registry | Never. systemd already tracks instance state, restart counts, and failure status. Don't reinvent process management. |
+| systemd drop-in overrides for WorkingDirectory | `cd` in wrapper before exec | Drop-ins are the systemd-native pattern. The wrapper `cd` approach works but is invisible to `systemctl show` and harder to debug. |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `Type=notify` for the tmux wrapper service | Requires the ExecStart process to call `systemd-notify READY=1`; tmux's `new-session -d` exits immediately without sending it, leaving systemd waiting forever (timeout → failure) | `Type=oneshot RemainAfterExit=yes` |
-| `WatchdogSec` without a notify-aware ExecStart | Systemd kills the service if no WATCHDOG=1 arrives; claude inside tmux cannot reliably send this without a wrapper co-process — adds complexity for marginal gain | Application-level heartbeat file + systemd timer |
-| System-level unit (`/etc/systemd/system/`) | Requires root for every enable/start/stop/restart; breaks the "personal VPS, run as your own user" model | `~/.config/systemd/user/` with `loginctl enable-linger` |
-| Python/Go watchdog daemon | Introduces a runtime dependency on a language not already in the project; over-engineering for a single hung-process pattern | ~20 lines of bash on a systemd timer |
-| `nohup` for crash recovery | Does not restart on crash; only detaches from the terminal; masquerades as a solution while providing no reliability | systemd `Restart=always` |
-| launchd on macOS | macOS is the development machine, not the VPS; the systemd service file is Linux-only and should be installed conditionally | Detect OS in install.sh; skip service install on macOS |
+| Claude Agent SDK (npm package) | Introduces Node.js runtime dependency for orchestration. The orchestra IS a Claude session -- it does not need an SDK to call itself. | `claude -p --output-format json` via Bash tool |
+| WebSocket/HTTP direct protocol to running sessions | Remote Control uses HTTPS polling + SSE through Anthropic relay. There is NO documented local API to send messages to a running session from another process. | `claude -p --resume <session_id>` for multi-turn. `claude-restart` for context reset. |
+| supervisor / pm2 / monit | Adding a process manager on top of systemd is redundant. systemd user services with template units provide restart, logging, dependency management. | systemd template units (`claude@.service`) |
+| YAML for manifest | Requires `yq` dependency, complex syntax for a flat list. | Plain text, one name per line, `#` for comments |
+| tmux for process lifecycle | tmux is for human terminal access, not process management. systemd owns the lifecycle. | systemd for lifecycle; tmux optionally for interactive debugging |
+| Shared restart file (`~/.claude-restart`) | Single file creates race conditions with multiple instances writing simultaneously. | Per-instance: `~/.claude-restart.<instance>` via `CLAUDE_RESTART_FILE` env var (already supported in claude-wrapper!) |
+| `Type=notify` or `WatchdogSec` | Claude process does not call `sd_notify()`. Watchdog for telegram mode is handled by timer, not WatchdogSec. | `Type=simple` (current) with separate watchdog timer per v1.1 pattern |
 
-## Stack Patterns by Platform
+## Remote Control Protocol Details
 
-**On Linux VPS (production):**
-- Use systemd user service (`~/.config/systemd/user/claude.service`)
-- `loginctl enable-linger` for boot persistence
-- tmux session for terminal persistence across SSH disconnects
-- `~/.config/environment.d/claude.conf` for env vars
-- Application-level watchdog via systemd timer + bash health check script
+Remote Control is NOT a local API. These facts drive architecture decisions:
 
-**On macOS (development):**
-- No service manager integration; the existing wrapper loop + shell alias is sufficient
-- tmux is optional (Mac terminal stays open)
-- Skip systemd-related install steps; install.sh must detect `uname` and branch
+- **Protocol**: HTTPS polling outbound (CLI polls Anthropic relay every ~2-5 seconds) + SSE for streaming responses back
+- **No local port opened**: All traffic is outbound to Anthropic relay servers over TLS
+- **No programmatic local API**: Cannot send messages to a running `claude remote-control` session from another local process via any documented mechanism
+- **Per-process sessions**: Each `claude remote-control` process hosts one logical session. Server mode supports `--capacity N` (default 32) for concurrent web sessions.
+- **Session URL**: Each session gets a unique URL under `claude.ai/code` that serves as authentication
+- **Reconnection**: Exponential backoff, ~30s ceiling, ~10 minute network timeout before exit
+- **Requires subscription auth**: API keys are NOT supported for remote-control. Requires claude.ai Pro/Max/Team/Enterprise login.
 
-**Detecting OS in bash (for install.sh):**
-```bash
-if [[ "$(uname)" == "Linux" ]] && command -v systemctl &>/dev/null; then
-    # Install systemd unit
-fi
+**Implication for orchestra design**: The orchestra CANNOT programmatically inject prompts into a running instrument's remote-control session. Instead:
+1. Orchestra uses `claude-restart --instance <name>` to restart instruments (context reset between phases)
+2. Orchestra spawns `claude -p` one-shot tasks in instrument project directories for ad-hoc research
+3. Human-to-instrument interaction happens via claude.ai/code (independent of orchestra)
+4. Orchestra monitors instrument health via `systemctl --user status claude@<name>.service`
+
+## Key Integration Points with Existing v1.1
+
+### claude-wrapper modifications
+
+1. **Per-instance restart file**: `CLAUDE_RESTART_FILE` env var already supported -- just set it per-instance in EnvironmentFile to `~/.claude-restart.<instance-name>`
+2. **Remote-control server mode**: Add `CLAUDE_CONNECT=remote-control` handling that runs `claude remote-control --name "$CLAUDE_INSTANCE_NAME"` (currently `remote-control` is passed as args to `claude`, but server mode is a subcommand not a flag)
+3. **Instance name awareness**: New env var `CLAUDE_INSTANCE_NAME` set per-instance, used for `--name` flag and log prefix
+
+### claude-restart modifications
+
+1. **Instance targeting**: Accept `--instance <name>` flag to target specific instrument's restart file and systemd unit
+2. **Backwards compatible**: Without `--instance`, behaves exactly as v1.1 (single instance)
+
+### claude-service modifications
+
+1. **Instance-aware commands**: `claude-service start myproject` maps to `systemctl --user start claude@myproject.service`
+2. **List command**: `claude-service list` via `systemctl --user list-units 'claude@*.service'`
+3. **Add/remove**: `claude-service add myproject /path/to/project` creates env file + drop-in + enables service
+4. **Backwards compatible**: `claude-service start` (no name) targets `claude.service` for migration path
+
+### systemd template unit design
+
+```ini
+[Unit]
+Description=Claude Code Instrument - %i
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/claude-wrapper --dangerously-skip-permissions
+EnvironmentFile=%h/.config/claude-restart/env
+EnvironmentFile=%h/.config/claude-restart/env.%i
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target
 ```
+
+Key design decisions:
+- **Two EnvironmentFiles**: Base `env` has shared config (API key, PATH). Per-instance `env.%i` has CLAUDE_INSTANCE_NAME, CLAUDE_RESTART_FILE.
+- **No WorkingDirectory in template**: Set via drop-in override per instance because systemd directives cannot be set from EnvironmentFile.
+- **Type=simple**: Same as v1.1. claude-wrapper is the foreground process.
+
+### Per-instance env file (`env.<instance>`)
+
+```bash
+# ~/.config/claude-restart/env.myproject
+CLAUDE_INSTANCE_NAME=myproject
+CLAUDE_RESTART_FILE=/home/user/.claude-restart.myproject
+```
+
+### Per-instance drop-in (`claude@myproject.service.d/workdir.conf`)
+
+```ini
+[Service]
+WorkingDirectory=/home/user/projects/myproject
+```
+
+### Instrument manifest (`~/.config/claude-restart/instruments`)
+
+```
+# One instrument name per line
+# Name must match systemd instance identifier (no spaces, no special chars)
+myproject
+another-project
+research-bot
+```
+
+## Stack Patterns by Use Case
+
+**Instrument in `remote-control` mode (default, production):**
+- ExecStart runs `claude remote-control --name "<instance>"` via wrapper
+- Watchdog timer NOT needed (remote-control has built-in reconnection per v1.1 D-16)
+- Heartbeat NOT needed (no stdin to keep alive)
+- Access via claude.ai/code or Claude mobile app
+
+**Orchestra session:**
+- Same `remote-control` mode as instruments
+- WorkingDirectory is a dedicated orchestration project folder
+- System prompt (via CLAUDE.md) includes awareness of instrument manifest
+- Has Bash tool access to `claude-service`, `claude-restart`, and `claude -p`
+- Is itself an instrument in the manifest (self-referential but manageable)
+
+**Ad-hoc research agent (spawned by orchestra):**
+- Uses `claude -p --bare` for fast startup
+- Runs in instrument's project directory
+- One-shot: executes task and returns JSON result
+- No systemd unit needed -- spawned and awaited by orchestra via Bash tool
 
 ## Version Compatibility
 
-| Component | Compatible With | Notes |
+| Component | Minimum Version | Notes |
 |-----------|-----------------|-------|
-| systemd user services | systemd 232+ | `loginctl enable-linger` user self-service added in 232; all current Ubuntu/Debian/Fedora/Arch have 252+ |
-| `~/.config/environment.d/` | systemd 233+ | Universal on any distro shipping systemd after 2018 |
-| `systemd-notify` CLI | systemd 209+ | Has been stable for over a decade; safe to rely on |
-| `tmux new-session -d` | tmux 1.8+ | Detached session flag is ancient; no compatibility concern |
-| `loginctl enable-linger` self-invocation | systemd 232+ | A user can enable their own linger without root since 232 |
-| bash 5.x | All current Linux distros | bash 4.x also works; no bash 5 features needed in the new code |
+| Claude Code CLI | v2.1.51+ | Required for `remote-control` mode. `--capacity` flag for server mode. |
+| systemd | 249+ | Template units with `%i`, drop-in overrides, user services. Any distro from 2021+. |
+| bash | 4.0+ | Arrays in claude-wrapper. macOS ships 3.2 but Homebrew bash is 5.x. |
+| jq | 1.6+ | JSON parsing of `claude -p` output. Standard in all package managers. |
 
 ## Sources
 
-- [systemd/User — ArchWiki](https://wiki.archlinux.org/title/Systemd/User) — user unit locations, lingering behavior, env var inheritance (HIGH confidence)
-- [sd_notify(3) — freedesktop.org](https://www.freedesktop.org/software/systemd/man/latest/sd_notify.html) — WATCHDOG=1, READY=1, systemd-notify CLI (HIGH confidence)
-- [How to Set Up systemd Watchdog Monitoring — OneUptime](https://oneuptime.com/blog/post/2026-03-04-set-up-systemd-watchdog-monitoring-for-critical-services/view) — concrete unit file directives (MEDIUM confidence, blog source verified against official docs)
-- [Tmux systemd service — GitHub Gist](https://gist.github.com/lionell/34c6d2bc58df11462fb73d034b2d21d1) — Type=forking vs Type=oneshot for tmux (MEDIUM confidence, community example)
-- [Arch Linux Forums — Tmux Autostart Systemd User Session](https://bbs.archlinux.org/viewtopic.php?id=247292) — Type=oneshot RemainAfterExit pattern (MEDIUM confidence, community-validated)
-- WebSearch: systemd WatchdogSec bash sd_notify 2025 — confirms systemd-notify CLI as the bash-compatible approach (MEDIUM confidence, multiple sources)
-- WebSearch: macOS launchd vs systemd cross-platform 2025 — confirms OS detection pattern is the right approach (MEDIUM confidence)
+- [Claude Code Remote Control docs](https://code.claude.com/docs/en/remote-control) -- Official. Server mode flags, `--capacity`, `--spawn`, session lifecycle. HIGH confidence.
+- [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference) -- Official. Full flag list including `-p`, `--resume`, `--output-format`, `--bare`. HIGH confidence.
+- [Claude Code headless mode](https://code.claude.com/docs/en/headless) -- Official. Print mode patterns, session continuation, `--bare` for fast scripted calls. HIGH confidence.
+- [Agent SDK overview](https://platform.claude.com/docs/en/agent-sdk/overview) -- Official. SDK capabilities, session management, `query()` API. HIGH confidence.
+- [Deep dive: Remote Control internals](https://dev.to/chwu1946/deep-dive-how-claude-code-remote-control-actually-works-50p6) -- HTTPS polling (not WebSocket), SSE streaming, no local API. MEDIUM confidence (third-party analysis, consistent with official docs).
+- [systemd template unit files (Fedora Magazine)](https://fedoramagazine.org/systemd-template-unit-files/) -- `%i` specifier, per-instance patterns. HIGH confidence.
+- [systemd.unit man page](https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html) -- Specifiers, EnvironmentFile, drop-in directories. HIGH confidence.
+- [Run multiple instances with systemd (Steven Rombauts)](https://www.stevenrombauts.be/2019/01/run-multiple-instances-of-the-same-systemd-unit/) -- Multi-instance EnvironmentFile pattern. HIGH confidence.
+- [systemd for Administrators Part X (Lennart Poettering)](http://0pointer.de/blog/projects/instances.html) -- Authoritative template unit guide from systemd creator. HIGH confidence.
 
 ---
-*Stack research for: claude-restart VPS reliability (systemd service, watchdog, keep-alive)*
-*Researched: 2026-03-20*
+*Stack research for: claude-restart v2.0 multi-instance orchestration*
+*Researched: 2026-03-22*

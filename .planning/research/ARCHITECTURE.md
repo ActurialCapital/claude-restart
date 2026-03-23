@@ -1,450 +1,455 @@
 # Architecture Research
 
-**Domain:** VPS reliability layer for Claude Code wrapper/restart mechanism
-**Researched:** 2026-03-20
-**Confidence:** HIGH (systemd mechanics), MEDIUM (claude process behavior), LOW (watchdog for channels-mode specifics)
+**Domain:** Multi-instance Claude Code orchestration on Linux VPS
+**Researched:** 2026-03-22
+**Confidence:** HIGH (systemd template patterns well-documented; Claude Code remote-control/SDK docs verified against official sources)
 
-## Standard Architecture
-
-### System Overview
-
-The existing v1.0 architecture is a foreground loop. The new VPS reliability layer adds three orthogonal concerns: process management (systemd), health detection (watchdog), and idle prevention (keep-alive). These must integrate without fighting each other.
+## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        PROCESS MANAGEMENT LAYER                      │
-│                                                                      │
-│  systemd user service                                                │
-│  (restart on crash + boot persistence)                               │
-│  Restart=on-failure, WatchdogSec=120s                                │
-│                                                                      │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │                      claude-wrapper                          │    │
-│  │   (existing restart-on-exit loop — v1.0)                    │    │
-│  │                                                              │    │
-│  │   loop:                                                      │    │
-│  │     launch claude [mode args]     ←── RESTART_FILE          │    │
-│  │     check restart file on exit                              │    │
-│  │     sleep 2s → relaunch                                     │    │
-│  │                                                              │    │
-│  │   ┌───────────────────────────────────────────────────┐     │    │
-│  │   │         claude process (node)                      │     │    │
-│  │   │                                                    │     │    │
-│  │   │  Mode A: claude --channels plugin:telegram@...    │     │    │
-│  │   │  Mode B: claude remote-control                    │     │    │
-│  │   └───────────────────────────────────────────────────┘     │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│                                                                      │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │                    watchdog sidecar (new)                    │    │
-│  │   periodic health check → sd_notify WATCHDOG=1              │    │
-│  │   OR kill claude-wrapper on hung detection                   │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│                                                                      │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │                  keep-alive (new, inline)                    │    │
-│  │   prevents idle timeout while waiting for Telegram messages  │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────┘
+                          Phone / Browser
+                               |
+                    claude.ai/code (remote-control)
+                               |
+                    +==========|============+
+                    |      VPS (systemd)    |
+                    |                       |
+                    |  [orchestra session]  |  <-- claude@orchestra.service
+                    |    |    |    |        |      WorkingDirectory=~/.orchestra
+                    |    |    |    |        |
+                    |    v    v    v        |
+                    |  inst  inst  inst     |  <-- claude@<name>.service
+                    |  (A)   (B)   (C)      |      per-project WorkingDirectory
+                    |                       |
+                    |  [ad-hoc agents]      |  <-- claude -p (spawned, not services)
+                    |  (short-lived)        |
+                    +=======================+
+```
+
+### Layers
+
+```
++-----------------------------------------------------------------+
+|                     User Access Layer                             |
+|  claude.ai/code, Claude mobile app, direct SSH/tmux              |
++-----------------------------------------------------------------+
+|                     Orchestration Layer                           |
+|  Orchestra session (optional autonomous supervisor)              |
+|  - Dispatches work via claude -p in instrument directories       |
+|  - Resets instrument context via claude-restart                  |
+|  - Reads manifest to discover instruments                        |
++-----------------------------------------------------------------+
+|                     Instrument Layer                              |
+|  claude@<name>.service instances (template units)                |
+|  Each: own WorkingDirectory, own env file, own restart file      |
++-----------------------------------------------------------------+
+|                     Service Layer                                 |
+|  systemd user services, template units, watchdog timers          |
+|  claude-instrument CLI (lifecycle management)                    |
++-----------------------------------------------------------------+
+|                     Foundation Layer                              |
+|  claude-wrapper (restart loop), claude-restart (kill + signal)   |
+|  Per-instance FIFO heartbeat, per-instance restart files         |
++-----------------------------------------------------------------+
 ```
 
 ### Component Responsibilities
 
-| Component | Responsibility | Status |
-|-----------|----------------|--------|
-| `claude-wrapper` | Foreground restart loop, reads RESTART_FILE, passes mode args | Existing — modified |
-| `claude-restart` | Writes RESTART_FILE, kills claude via PPID walk | Existing — unchanged |
-| `install.sh` | Copies scripts, patches zshrc | Existing — extended |
-| `claude.service` | systemd user unit: boot persistence, crash restart, watchdog integration | New |
-| `claude-watchdog` | Detects hung claude process, pings systemd watchdog or kills wrapper | New |
-| `claude-mode-select` | Writes correct mode args to RESTART_FILE before launch | New or inline in wrapper |
-| Keep-alive logic | Prevents idle timeout; inline in wrapper or separate loop | New — inline in wrapper |
-
----
-
-## Key Architecture Question: How Do systemd and the Wrapper Loop Layer?
-
-### The Layering Answer
-
-They operate at different levels and serve different purposes — they do not conflict when configured correctly.
-
-**Wrapper loop** handles: "Claude exited — should I relaunch it?" It exists because the restart signal (`claude-restart`) kills the claude process and expects the wrapper to relaunch it. The wrapper is the foreground process that users interact with in a terminal.
-
-**systemd** handles: "The wrapper itself crashed, or the VPS rebooted — start everything again." systemd watches the wrapper, not claude. The wrapper is the `ExecStart` target.
-
-**The correct mental model:**
-
-```
-systemd → watches → claude-wrapper → watches → claude process
-```
-
-systemd restarts the wrapper only when the wrapper exits with a failure code or is killed by the watchdog. The wrapper's own restart loop is transparent to systemd — from systemd's perspective, the wrapper is always "running" as long as the loop continues.
-
-**Critical configuration:** Use `Type=simple` (not `Type=forking`). The wrapper runs in the foreground and never forks — it is the main process. systemd tracks the wrapper's PID directly.
-
-**Avoid the restart loop collision:** The wrapper must NOT exit with success (exit 0) on every restart cycle — it only exits when the user intentionally quits claude (no RESTART_FILE present) or hits the max-restarts limit. This is already the existing behavior and is correct.
-
-**Restart storm prevention:** systemd's `StartLimitBurst` and `StartLimitIntervalSec` act as circuit breakers. If the wrapper itself crashes rapidly (not normal restarts), systemd stops attempting after N failures in the interval window.
-
----
-
-## Key Architecture Question: Watchdog for "Process Alive But Unresponsive"
-
-### The Problem
-
-The Telegram channels mode has a documented failure pattern: the `claude` process stays alive (node process running, no crash) but stops responding to Telegram messages. systemd's normal process monitoring only detects exit — it cannot detect this "zombie" state.
-
-### Why External Watchdog Is Needed
-
-The `claude` process is a Node.js binary. It does not call `sd_notify(WATCHDOG=1)` natively. A watchdog must be implemented externally.
-
-### Watchdog Implementation Options
-
-**Option A: Wrapper-inline watchdog (recommended for simplicity)**
-
-The wrapper spawns a background subshell that periodically sends `systemd-notify WATCHDOG=1`. This runs in the same process group as the wrapper, satisfying `NotifyAccess=main` (the subshell inherits the wrapper's group).
-
-```bash
-# Inside claude-wrapper, after launching claude in background:
-watchdog_loop() {
-    while kill -0 "$claude_pid" 2>/dev/null; do
-        systemd-notify WATCHDOG=1 2>/dev/null || true
-        sleep "$((WATCHDOG_USEC / 1000000 / 2))"
-    done
-}
-watchdog_loop &
-```
-
-The health check for "is claude actually responding?" is the hard part (see below). If health check fails, the watchdog stops pinging systemd, which times out and kills+restarts the wrapper.
-
-**Option B: Separate watchdog sidecar**
-
-A separate process runs alongside the wrapper, polls a health endpoint, and either pings systemd or kills the wrapper directly. More complex, requires coordination.
-
-For this project's scale (personal VPS, single user, ~200 LOC philosophy), Option A is correct.
-
-### Health Check Strategy: How to Detect "Unresponsive"
-
-This is the hardest part. There is no standard health endpoint for claude.
-
-**For channels/Telegram mode:**
-
-The Telegram plugin polls Telegram's API. The most reliable proxy for "is claude responding?" is: "has the Telegram plugin sent a heartbeat or processed a message recently?"
-
-Options in order of reliability:
-1. **Process tree check** — verify the Bun subprocess (Telegram plugin) is alive and has file descriptors open. If Bun is dead, claude is in a bad state. LOW confidence this catches all hung states.
-2. **Timestamp file** — patch or configure claude to touch a health file periodically. Not feasible without modifying claude itself.
-3. **Message-based probe** — send a test message to the Telegram bot and check for a response within N seconds. HIGH confidence but requires Telegram API access in the watchdog. HIGH complexity.
-4. **Process CPU/IO check** — if the claude process shows zero CPU and zero IO for an extended period (e.g., 30+ minutes on a channels session), declare it hung. LOW confidence, many false positives during idle periods.
-5. **Restart on inactivity timer** — do not try to detect hung state; instead, restart claude every N hours proactively. This matches the existing `claude-restart` mechanism and is zero-complexity.
-
-**For remote-control mode:**
-
-`claude remote-control` exits on its own after a ~10-minute network outage (documented behavior). systemd's crash-restart already handles this case. No additional health check is needed — the process self-terminates when unresponsive.
-
-**Recommended approach for v1.1:**
-
-Use option 5 (periodic restart) as a pragmatic substitute for true health detection. The watchdog only needs to confirm the process is alive (standard PID check) to ping systemd. A separate keep-alive/restart timer handles the "alive but unresponsive" case by scheduling periodic restarts via `claude-restart`. This avoids the complexity of a real health probe.
-
----
-
-## Key Architecture Question: tmux vs systemd
-
-### Answer: systemd replaces tmux for reliability; tmux becomes optional for interactive use
-
-**Current state:** User SSH in → start tmux → run claude manually. tmux serves two purposes: (1) session persistence across SSH drops, and (2) a way to detach and reattach.
-
-**With systemd:** The claude-wrapper runs as a systemd user service. SSH drops do not kill it. No tmux needed for persistence.
-
-**What tmux still provides:** An interactive terminal window to view claude's output and type commands. This is a separate concern from reliability. If the user wants to see claude's terminal output, they can attach to a tmux session inside which they run `journalctl -fu claude.service` or a socat pipe. But the service runs whether or not tmux is open.
-
-**Conclusion:**
-
-| Concern | systemd handles | tmux handles |
-|---------|----------------|--------------|
-| Survive SSH drop | YES | YES (but process stays in tmux) |
-| Auto-start on boot | YES | No |
-| Crash recovery | YES | No |
-| Interactive terminal output | No | YES |
-| Detach/reattach | No | YES |
-
-For a VPS running channels/remote-control mode, there is no interactive terminal output to view. The user interacts via Telegram or the mobile app. tmux is no longer needed at all.
-
-If the user wants to occasionally attach and interact via terminal (e.g., to run `claude-restart`), they can `systemctl --user stop claude`, then start claude manually in a tmux session for that interaction, then restart the service. This is an acceptable workflow for a personal VPS.
-
-**Systemd user service with lingering** is the correct replacement for tmux-as-persistence.
-
----
+| Component | Responsibility | Implementation |
+|-----------|----------------|----------------|
+| `claude@.service` | Template unit for all instrument instances | systemd template, `%i` specifier for instance name |
+| `claude@orchestra.service` | Orchestra is just another instance of the template | Same template, special env file and working directory |
+| `claude-wrapper` | Restart loop, signal forwarding, heartbeat | Existing bash script, modified for per-instance paths |
+| `claude-restart` | Kill claude process, write restart file | Existing bash script, modified for per-instance paths |
+| `claude-instrument` | CLI for add/remove/list/status lifecycle | New bash script replacing single-instance `claude-service` |
+| Manifest | Registry of all instruments and their config | `~/.config/claude-restart/instruments.json` |
+| Per-instance env | API keys, CLAUDE_CONNECT, instance-specific vars | `~/.config/claude-restart/<name>/env` |
+| Per-instance restart file | Restart signal coordination per instrument | `~/.claude-restart-<name>` |
 
 ## Recommended Project Structure
 
 ```
 bin/
-├── claude-wrapper          # Existing — modified to support mode selection + keep-alive
-├── claude-restart          # Existing — unchanged
-├── install.sh              # Existing — extended to install systemd unit + mode config
-└── claude-watchdog         # New — optional, may be inline in wrapper instead
+  claude-wrapper           # Modified: reads CLAUDE_INSTANCE_NAME for per-instance paths
+  claude-restart           # Modified: reads CLAUDE_INSTANCE_NAME for per-instance paths
+  claude-instrument        # NEW: lifecycle CLI (add/remove/list/status/logs)
+  install.sh               # Modified: deploys template units + claude-instrument
+
 systemd/
-└── claude.service          # New — user unit file template
+  claude@.service          # NEW: template unit replacing claude.service
+  claude-watchdog@.timer   # NEW: per-instance watchdog timer (replaces claude-watchdog.timer)
+  claude-watchdog@.service # NEW: per-instance watchdog oneshot (replaces claude-watchdog.service)
+  env.template             # Modified: includes CLAUDE_INSTANCE_NAME
+
+tests/
+  test-wrapper.bats        # Modified: per-instance path tests
+  test-restart.bats        # Modified: per-instance path tests
+  test-instrument.bats     # NEW: lifecycle CLI tests
+  test-manifest.bats       # NEW: manifest CRUD tests
 ```
 
 ### Structure Rationale
 
-- **bin/**: All executable scripts, consistent with v1.0
-- **systemd/**: Unit file lives in repo, `install.sh` copies to `~/.config/systemd/user/`
-- **No new config files beyond systemd unit**: Mode selection stored in RESTART_FILE or env var
-
----
+- **`bin/`**: Single flat directory. No subdirectories needed -- the project has 4-5 scripts total.
+- **`systemd/`**: Template units replace single-instance units. The `@` in filenames is the systemd convention for templates.
+- **`tests/`**: One test file per script, plus integration tests for manifest operations.
 
 ## Architectural Patterns
 
-### Pattern 1: Layered Restart Hierarchy
+### Pattern 1: systemd Template Units with Per-Instance Environment Files
 
-**What:** Two independent restart mechanisms at different levels — wrapper loop for graceful restart-with-new-args, systemd for crash/boot recovery. They do not interfere because the wrapper is always the primary process.
+**What:** A single `claude@.service` template file serves all instances. The instance name after `@` (`%i`) drives per-instance paths for env files, working directories, and restart files.
 
-**When to use:** Any foreground-loop process managed by systemd.
+**When to use:** Always -- this is the foundation of multi-instance support.
 
-**Trade-offs:** Simple to reason about; two different failure modes are handled separately. Risk: wrapper max-restarts limit causes wrapper to exit 1, triggering systemd restart, triggering wrapper again — potential restart storm. Mitigate with `StartLimitBurst`.
+**Trade-offs:** Elegant and native to systemd. One limitation: `WorkingDirectory` cannot read values from `EnvironmentFile` because systemd resolves `WorkingDirectory=` at unit parse time, before `EnvironmentFile=` is loaded.
 
-```
-systemd Restart=on-failure
-    └── triggers when wrapper exits with non-zero
-        └── wrapper exits non-zero when MAX_RESTARTS exceeded
-            └── systemd waits RestartSec, relaunches wrapper
-                └── wrapper resets restart_count to 0
-```
+**Implementation:**
 
-### Pattern 2: Cooperative Watchdog via Wrapper Subshell
-
-**What:** The wrapper owns the watchdog pinging responsibility. A background subshell within the wrapper reads `$WATCHDOG_USEC` from environment (set by systemd when `WatchdogSec` is configured) and calls `systemd-notify WATCHDOG=1` at half the interval.
-
-**When to use:** When the main application (claude/node) cannot be modified to call sd_notify itself.
-
-**Trade-offs:** Works within existing bash script constraints; no external dependencies. The health check is process-alive-only (not semantic). For this project that is acceptable given the periodic-restart fallback.
-
-**Key systemd requirement:** `NotifyAccess=main` is sufficient because the subshell inherits the wrapper process group. Do NOT use `NotifyAccess=all` unnecessarily.
-
-### Pattern 3: Mode Selection via RESTART_FILE
-
-**What:** Mode selection (channels vs remote-control) is expressed as CLI arguments written to RESTART_FILE at startup or via `claude-restart <mode-args>`. The wrapper reads them on each restart cycle.
-
-**When to use:** Consistent with existing restart mechanism — no new coordination primitives needed.
-
-**Trade-offs:** Mode is determined at wrapper launch and can be changed mid-session via `claude-restart`. Simple. Limitation: cannot switch modes without restarting the claude process (acceptable — mode switch requires restart anyway).
-
-```bash
-# Launch in channels mode:
-claude-wrapper --channels plugin:telegram@claude-plugins-official --dangerously-skip-permissions
-
-# Switch to remote-control mode:
-claude-restart remote-control
-# wrapper picks up the new args on next restart cycle
-```
-
----
-
-## Data Flow
-
-### Normal Operation (Telegram channels mode)
-
-```
-[systemd starts claude-wrapper on boot]
-    ↓
-[claude-wrapper launches: claude --channels plugin:telegram@... --dangerously-skip-permissions]
-    ↓
-[watchdog subshell pings systemd every 60s: systemd-notify WATCHDOG=1]
-    ↓
-[Telegram message arrives → Bun plugin → claude process handles it → replies]
-    ↓
-[idle period: keep-alive loop touches activity file or does minimal work]
-    ↓
-[claude exits for any reason]
-    ↓
-[wrapper checks RESTART_FILE]
-    ├── File present → read new args → sleep 2s → relaunch claude
-    └── File absent → wrapper exits → systemd sees non-zero or Restart=always → restarts wrapper
-```
-
-### Restart-with-Mode-Change Flow
-
-```
-[user sends "restart in remote-control mode" to Telegram bot]
-    ↓
-[claude runs: claude-restart remote-control]
-    ↓
-[RESTART_FILE written: "remote-control"]
-[claude process killed via PPID walk]
-    ↓
-[wrapper detects exit + RESTART_FILE present]
-[reads: "remote-control"]
-[relaunches: claude remote-control]
-```
-
-### Hung Process Recovery Flow (watchdog path)
-
-```
-[claude process alive but unresponsive to Telegram]
-    ↓
-[watchdog subshell stops detecting healthy state]
-[stops calling systemd-notify WATCHDOG=1]
-    ↓
-[systemd WatchdogSec timeout expires]
-[systemd sends SIGABRT to wrapper process group]
-    ↓
-[wrapper exits]
-[systemd Restart=on-failure triggers]
-[wrapper relaunches with same mode args]
-```
-
-OR (simpler periodic-restart path):
-
-```
-[scheduled: every 6 hours]
-    ↓
-[cron/systemd timer calls: claude-restart]
-[RESTART_FILE written, claude killed]
-    ↓
-[wrapper relaunches — same args — fresh process state]
-```
-
----
-
-## Integration Points
-
-### New vs Modified Components
-
-| Component | Status | Integration Point |
-|-----------|--------|-------------------|
-| `claude-wrapper` | Modified | Add mode-selection arg handling; add keep-alive loop; add watchdog subshell |
-| `claude-restart` | Unchanged | Already works; mode args are just args |
-| `install.sh` | Modified | Add systemd unit install; add `loginctl enable-linger`; add mode config |
-| `claude.service` | New | systemd user unit; `ExecStart=claude-wrapper $CLAUDE_MODE_ARGS` |
-| `claude-watchdog` (optional) | New or inline | Pings systemd watchdog; may be inline in wrapper |
-
-### systemd Unit Integration
-
-The unit file must:
-- Use `Type=simple` (wrapper is the main process, runs in foreground)
-- Set `Restart=on-failure` (not `always` — user intentional quit should not restart)
-- Set `WatchdogSec=120` (2 minutes; adjust based on expected Telegram response latency)
-- Set `NotifyAccess=main` (wrapper's subshell can send notifications)
-- Set `Environment=CLAUDE_MODE=channels` or use `EnvironmentFile=~/.config/claude-wrapper/mode`
-- Use `User=` and be a user service (no root required; `loginctl enable-linger` for boot persistence)
-
-```
-# ~/.config/systemd/user/claude.service
+```ini
+# systemd/claude@.service
 [Unit]
-Description=Claude Code Wrapper
+Description=Claude Code - %i
 After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/claude-wrapper --channels plugin:telegram@claude-plugins-official --dangerously-skip-permissions
+ExecStart=%h/.local/bin/claude-wrapper --dangerously-skip-permissions
+EnvironmentFile=%h/.config/claude-restart/%i/env
 Restart=on-failure
-RestartSec=10
-StartLimitBurst=5
-StartLimitIntervalSec=300
-WatchdogSec=120
-NotifyAccess=main
-StandardOutput=journal
-StandardError=journal
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=10
 
 [Install]
 WantedBy=default.target
 ```
 
+**Critical detail -- WorkingDirectory resolution:** systemd resolves `WorkingDirectory=` at unit parse time, before `EnvironmentFile=` is read. This means `WorkingDirectory=$CLAUDE_WORKING_DIR` does not work. Two solutions exist:
+
+1. **Wrapper `cd` approach (recommended):** `claude-wrapper` reads `CLAUDE_WORKING_DIR` from the environment and does `cd "$CLAUDE_WORKING_DIR"` before launching claude. Simple, no extra systemd files.
+2. **Drop-in override approach:** `claude-instrument add` creates `~/.config/systemd/user/claude@<name>.service.d/workdir.conf` with a hardcoded `[Service] WorkingDirectory=/path/to/project`. More systemd-native but adds file management complexity.
+
+Use approach 1. It keeps everything in the env file and avoids systemd drop-in proliferation.
+
+### Pattern 2: Per-Instance Path Namespacing via Environment Variable
+
+**What:** A single `CLAUDE_INSTANCE_NAME` env var drives all per-instance file paths: restart file, heartbeat FIFO, env file directory, log identification.
+
+**When to use:** Everywhere. This is how the existing single-instance scripts become multi-instance without forking code.
+
+**Trade-offs:** Minimal code changes to existing scripts. When unset, defaults to legacy single-instance behavior (backward compatible).
+
+**Implementation in claude-wrapper:**
+
+```bash
+# Per-instance paths (backward compatible: unset = legacy behavior)
+INSTANCE="${CLAUDE_INSTANCE_NAME:-}"
+if [[ -n "$INSTANCE" ]]; then
+    RESTART_FILE="${CLAUDE_RESTART_FILE:-$HOME/.claude-restart-$INSTANCE}"
+    HEARTBEAT_FIFO_PREFIX="/tmp/claude-heartbeat-$INSTANCE"
+    # cd to working directory from env file
+    if [[ -n "${CLAUDE_WORKING_DIR:-}" ]]; then
+        cd "$CLAUDE_WORKING_DIR"
+    fi
+else
+    RESTART_FILE="${CLAUDE_RESTART_FILE:-$HOME/.claude-restart}"
+    HEARTBEAT_FIFO_PREFIX="/tmp/claude-heartbeat"
+fi
+```
+
+**Implementation in claude-restart:**
+
+```bash
+INSTANCE="${CLAUDE_INSTANCE_NAME:-}"
+if [[ -n "$INSTANCE" ]]; then
+    RESTART_FILE="${CLAUDE_RESTART_FILE:-$HOME/.claude-restart-$INSTANCE}"
+else
+    RESTART_FILE="${CLAUDE_RESTART_FILE:-$HOME/.claude-restart}"
+fi
+```
+
+### Pattern 3: Manifest-Driven Instrument Registry
+
+**What:** A JSON manifest at `~/.config/claude-restart/instruments.json` records all registered instruments. The CLI and orchestra read this to discover instruments.
+
+**When to use:** For lifecycle tooling (list/status) and orchestra awareness.
+
+**Trade-offs:** Simple file-based approach. No daemon needed. Slightly out-of-sync risk if someone manually edits systemd units, but `claude-instrument list` can reconcile by checking both manifest and `systemctl --user list-units 'claude@*'`.
+
+**Manifest structure:**
+
+```json
+{
+  "version": 1,
+  "instruments": {
+    "myproject": {
+      "working_dir": "/home/user/repos/myproject",
+      "added": "2026-03-22T10:00:00Z",
+      "connect_mode": "remote-control",
+      "description": "My main project"
+    },
+    "orchestra": {
+      "working_dir": "/home/user/.orchestra",
+      "added": "2026-03-22T10:00:00Z",
+      "connect_mode": "remote-control",
+      "description": "Autonomous orchestra supervisor",
+      "role": "orchestra"
+    }
+  }
+}
+```
+
+**Why JSON and not plain text:** The manifest needs structured data (working directories, timestamps, optional metadata). `jq` is a reasonable dependency for a tool that already requires `node` (for claude itself). Alternatively, the bash scripts can use simple field extraction without `jq` if the format is kept flat.
+
+### Pattern 4: Orchestra-to-Instrument Communication
+
+**What:** The orchestra session controls instruments through two mechanisms: (1) `claude-restart` for context reset of running instruments, and (2) `claude -p` for spawning ad-hoc research agents in instrument directories.
+
+**When to use:** When the orchestra needs to dispatch work or reset instrument state.
+
+**Critical constraint verified against official docs:** Claude Code's `remote-control` mode does not expose a programmatic message-sending API. It routes through claude.ai/code's web interface only. There is no `claude inject <session_id>` command -- this is an open feature request ([GitHub issue #24947](https://github.com/anthropics/claude-code/issues/24947)). The orchestra cannot "talk to" a running instrument's conversation.
+
+**What the orchestra CAN do:**
+
+1. **Restart instruments** with new instructions via `claude-restart` (causes context loss)
+2. **Spawn ad-hoc agents** via `claude -p` in instrument directories (independent sessions, no shared context with running instrument)
+3. **Read instrument status** via `claude-instrument status` and `systemctl --user status`
+4. **Read/write files** in instrument working directories (the orchestra has filesystem access)
+
+**What the orchestra CANNOT do:**
+
+1. Send a message to a running instrument's conversation
+2. Read a running instrument's conversation context
+3. Observe instrument output in real time
+
+**Orchestra dispatch via `claude -p`:**
+
+```bash
+# Orchestra spawns a research agent in an instrument's project directory
+cd /home/user/repos/myproject
+claude -p "Analyze the test coverage and report gaps" \
+    --allowedTools "Read,Grep,Glob,Bash" \
+    --output-format json \
+    --bare
+```
+
+**Orchestra restart via `claude-restart`:**
+
+```bash
+# Orchestra triggers context reset of an instrument
+CLAUDE_INSTANCE_NAME=myproject claude-restart "new task instructions here"
+```
+
+**How the orchestra discovers instruments:** Reads the manifest file. The orchestra's CLAUDE.md includes instructions to check `~/.config/claude-restart/instruments.json` and use `claude-instrument status` for live state.
+
+### Pattern 5: Agent Teams as Alternative Orchestra Pattern
+
+**What:** Claude Code v2.1.32+ includes experimental "Agent Teams" for cross-session coordination. One session acts as team lead, spawning teammates with shared task lists and inter-agent messaging.
+
+**When to use:** Evaluated but NOT recommended for this project.
+
+**Why not:** Agent teams are experimental (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` flag), have known limitations around session resumption, require interactive mode (not compatible with headless systemd services), and are designed for short-lived coordinated work sessions rather than persistent long-running services. The systemd-based approach is more reliable for always-on VPS operation.
+
+**When to reconsider:** If agent teams become stable and gain persistent/headless support, they could replace the custom orchestra pattern entirely.
+
+## Data Flow
+
+### Instrument Lifecycle Flow
+
+```
+claude-instrument add myproject /path/to/project
+    |
+    v
+Create env file:     ~/.config/claude-restart/myproject/env
+Write manifest:      ~/.config/claude-restart/instruments.json
+    |
+    v
+systemctl --user enable claude@myproject.service
+systemctl --user start claude@myproject.service
+    |
+    v
+claude-wrapper starts (reads CLAUDE_INSTANCE_NAME=myproject from env)
+    |
+    v
+cd $CLAUDE_WORKING_DIR
+claude remote-control --name "myproject" --dangerously-skip-permissions
+    |
+    v
+Session available at claude.ai/code as "myproject"
+```
+
+### Per-Instance Restart Flow
+
+```
+[orchestra or user]
+    |
+    v
+CLAUDE_INSTANCE_NAME=myproject claude-restart "new args"
+    |
+    v
+Writes ~/.claude-restart-myproject
+Kills claude process via PPID chain walk
+    |
+    v
+claude-wrapper detects restart file
+Reads new args, re-launches claude in same working directory
+```
+
+### Orchestra Dispatch Flow
+
+```
+Orchestra session (running in ~/.orchestra)
+    |
+    +-- Reads instruments.json for discovery
+    |
+    +-- Option A: Reset instrument context
+    |     CLAUDE_INSTANCE_NAME=myproject claude-restart "phase 2 instructions"
+    |
+    +-- Option B: Spawn ad-hoc research agent
+    |     cd /home/user/repos/myproject
+    |     claude -p "research question" --bare --output-format json
+    |     (reads stdout JSON, processes result)
+    |
+    +-- Option C: Check instrument status
+          claude-instrument status myproject
+          (parses systemctl output)
+```
+
+### Key Data Flows
+
+1. **Instance startup:** systemd starts template unit -> wrapper reads instance env -> wrapper `cd`s to working dir -> wrapper launches claude with mode args -> claude connects via remote-control
+2. **Instance restart:** restart script writes per-instance restart file -> kills claude process -> wrapper detects file -> re-launches claude with new args in same directory
+3. **Orchestra dispatch:** orchestra reads manifest -> executes `claude -p` in target directory -> captures JSON output -> processes result
+4. **Instrument discovery:** `claude-instrument list` reads manifest + cross-references `systemctl --user list-units 'claude@*'` for live reconciliation
+
+## Scaling Considerations
+
+| Scale | Architecture Adjustments |
+|-------|--------------------------|
+| 1-3 instruments | Manifest is optional; can rely on systemd unit listing alone. Orchestra is overkill. |
+| 4-8 instruments | Manifest becomes valuable for metadata (descriptions, roles). Orchestra adds value for cross-project coordination. |
+| 8+ instruments | Memory/CPU become constraints. Consider per-instrument resource limits via systemd `MemoryMax=` / `CPUQuota=`. Watchdog becomes essential for preventing runaway instances. |
+
+### Scaling Priorities
+
+1. **First bottleneck: Memory.** Each Claude Code session consumes ~200-500MB. At 8 instances, that is 1.6-4GB just for Claude processes plus node overhead. Monitor with `systemd-cgtop` or per-unit `MemoryMax=`.
+2. **Second bottleneck: API rate limits.** Multiple instances hitting the Anthropic API concurrently may trigger rate limits, especially if orchestra is also spawning `claude -p` agents. Orchestra should pace dispatches.
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Shared Restart File Across Instances
+
+**What people do:** Reuse `~/.claude-restart` for all instances (the v1.x default).
+**Why it's wrong:** Race condition. Instance A's restart signal gets consumed by instance B's wrapper.
+**Do this instead:** Per-instance restart files: `~/.claude-restart-<name>`. Driven by `CLAUDE_INSTANCE_NAME` in each instance's env file.
+
+### Anti-Pattern 2: Orchestra Sending Messages to Running Instruments
+
+**What people do:** Try to use some IPC to send messages to a running instrument session's conversation.
+**Why it's wrong:** No such API exists. The `claude inject` feature request ([GitHub issue #24947](https://github.com/anthropics/claude-code/issues/24947)) is still open as of March 2026. Remote-control routes through claude.ai/code only, not a local API.
+**Do this instead:** Orchestra has two levers: (1) restart the instrument with new instructions via `claude-restart`, or (2) spawn a separate `claude -p` agent in the same directory. Accept that the orchestra cannot interact with a running instrument's conversation context.
+
+### Anti-Pattern 3: WorkingDirectory from EnvironmentFile
+
+**What people do:** Set `WorkingDirectory=$CLAUDE_WORKING_DIR` in the systemd template, expecting it to be resolved from EnvironmentFile.
+**Why it's wrong:** systemd resolves `WorkingDirectory=` at unit parse time, before `EnvironmentFile=` is read. The variable is treated as a literal string, causing the service to fail.
+**Do this instead:** Have `claude-wrapper` read `CLAUDE_WORKING_DIR` from the environment and `cd` to it before launching claude.
+
+### Anti-Pattern 4: Per-Instance Service Files Instead of Templates
+
+**What people do:** Copy `claude.service` to `claude-myproject.service`, `claude-other.service`, etc.
+**Why it's wrong:** Duplicated unit files. Every change requires updating N files. No consistency guarantee.
+**Do this instead:** Single `claude@.service` template. All instances share the same unit definition. Instance-specific config lives in per-instance env files at `~/.config/claude-restart/<name>/env`.
+
+### Anti-Pattern 5: Using Agent Teams for Persistent Orchestration
+
+**What people do:** Try to use Claude Code's experimental Agent Teams feature for always-on cross-project orchestration.
+**Why it's wrong:** Agent Teams are experimental, not designed for persistent/headless operation, have session resumption limitations, and require interactive mode. They are designed for short-lived coordinated work sessions.
+**Do this instead:** Use systemd template units for persistent instrument management, with the orchestra as a regular instrument that uses `claude-restart` and `claude -p` for inter-instrument coordination.
+
+## Integration Points
+
+### Existing Components Modified
+
+| Component | Change | Rationale |
+|-----------|--------|-----------|
+| `claude-wrapper` | Add `CLAUDE_INSTANCE_NAME` path namespacing, add `cd $CLAUDE_WORKING_DIR` | Multi-instance restart file isolation, per-instance working directory |
+| `claude-restart` | Add `CLAUDE_INSTANCE_NAME` path namespacing | Per-instance restart file targeting |
+| `install.sh` | Deploy template units, offer multi-instance setup flow, deploy `claude-instrument` | Replace single-instance `claude.service` with `claude@.service` |
+
+### New Components
+
+| Component | Purpose | Depends On |
+|-----------|---------|------------|
+| `claude@.service` | systemd template unit for all instances | `claude-wrapper` (modified), per-instance env files |
+| `claude-watchdog@.timer` | Per-instance watchdog timer | Template unit pattern |
+| `claude-watchdog@.service` | Per-instance watchdog oneshot | Template unit pattern |
+| `claude-instrument` | Lifecycle CLI (add/remove/list/status/logs) | Manifest, systemd template units |
+| `instruments.json` | Instrument registry/manifest | `claude-instrument` (manages it) |
+| Orchestra CLAUDE.md | System prompt for orchestra behavior | Manifest, `claude-instrument`, `claude-restart` |
+
+### Backward Compatibility
+
+The v1.x single-instance `claude.service` coexists with template units during migration. When `CLAUDE_INSTANCE_NAME` is unset, `claude-wrapper` and `claude-restart` behave identically to v1.1. Migration path:
+
+1. Install template units alongside existing single-instance service
+2. Create first instrument via `claude-instrument add` (registers in manifest, starts `claude@<name>.service`)
+3. Stop and disable legacy `claude.service` when ready
+4. Remove legacy unit file via `claude-instrument migrate` or manual cleanup
+
 ### Internal Boundaries
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| systemd ↔ claude-wrapper | Process lifecycle (start/stop/kill), notify socket | Wrapper is ExecStart; must not fork |
-| claude-wrapper ↔ claude | Fork/exec (foreground), exit code, SIGTERM | Same as v1.0 |
-| claude-wrapper ↔ RESTART_FILE | File read/write | Same as v1.0 |
-| claude-wrapper ↔ systemd watchdog | `systemd-notify WATCHDOG=1` via subshell | New — only active under systemd |
-| claude-restart ↔ claude | SIGTERM via PPID walk | Same as v1.0; works in both modes |
+| Wrapper <-> Restart | Restart file (`~/.claude-restart-<name>`) | File-based signaling, same as v1.x but per-instance |
+| CLI <-> systemd | `systemctl --user` commands | Template instances: `claude@<name>.service` |
+| CLI <-> Manifest | Read/write `instruments.json` | CLI is sole writer; orchestra and status commands are readers |
+| Orchestra <-> Instruments | `claude-restart` (restart) or `claude -p` (dispatch) | No direct messaging to running sessions |
+| Orchestra <-> Manifest | Read-only discovery | Orchestra discovers instruments by reading manifest |
 
----
+### External Services
 
-## Anti-Patterns
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Anthropic API | Each instance authenticates independently | API key in per-instance env file. Same key can be shared across instances. |
+| claude.ai/code | Each `remote-control` instance appears as separate named session | Named via `--name` flag; instance name maps to session name |
+| systemd | User-level services with linger | Template units, `loginctl enable-linger` for boot persistence |
 
-### Anti-Pattern 1: systemd Restart=always on the Wrapper
+## Build Order
 
-**What people do:** Set `Restart=always` so the service always comes back.
+Based on dependency analysis, the recommended implementation order:
 
-**Why it's wrong:** When the user intentionally quits claude (Ctrl+C exits wrapper with 130, or wrapper exits 0), systemd immediately restarts it. There is no way to stop the service without `systemctl stop`. The max-restarts circuit breaker in the wrapper also triggers systemd restarts in an unwanted cascade.
+| Phase | Component | Depends On | Produces |
+|-------|-----------|------------|----------|
+| 1 | Per-instance path namespacing (modify `claude-wrapper` + `claude-restart`) | Nothing | Foundation: backward-compatible per-instance restart files, heartbeat FIFOs, working directory |
+| 2 | Template unit files (`claude@.service`, watchdog templates) | Phase 1 | systemd-managed multi-instance capability |
+| 3 | Per-instance env files and manifest structure | Phase 2 | Instrument configuration storage and registry |
+| 4 | `claude-instrument` CLI | Phases 1-3 | User-facing lifecycle management (add/remove/list/status/logs) |
+| 5 | Installer updates | Phase 4 | One-command deployment of multi-instance infrastructure |
+| 6 | Orchestra session (CLAUDE.md + working directory) | Phase 4 | Autonomous supervisor using `claude-restart` + `claude -p` |
 
-**Do this instead:** Use `Restart=on-failure`. The wrapper exits 0 on clean user quit (no RESTART_FILE), exit 130 on SIGINT. systemd only restarts on abnormal exit. Add `RestartPreventExitStatus=0 130` to be explicit.
-
-### Anti-Pattern 2: Type=forking for the Wrapper
-
-**What people do:** Use `Type=forking` because the wrapper "starts child processes."
-
-**Why it's wrong:** The wrapper does not fork-and-exit. It stays in the foreground running the loop. Type=forking tells systemd the initial process will exit after forking the real daemon — that is not what happens here. systemd will declare the service "failed" immediately when it sees the wrapper is still running.
-
-**Do this instead:** Use `Type=simple`. The wrapper is the main process. systemd tracks it directly.
-
-### Anti-Pattern 3: Running Watchdog from a Grand-Child Process
-
-**What people do:** Have the claude process (or a script it spawns) call `systemd-notify WATCHDOG=1`.
-
-**Why it's wrong:** systemd only accepts watchdog notifications from the main process (wrapper PID) or processes in its cgroup, depending on `NotifyAccess`. Grand-child processes (wrapper → claude → subshell) may not have the right credentials to deliver the notification. This is a known systemd limitation (issue #25961).
-
-**Do this instead:** Run the watchdog subshell directly from the wrapper script, before or alongside the claude invocation. The subshell inherits the wrapper's process group and credentials.
-
-### Anti-Pattern 4: Replacing the Wrapper Loop with Pure systemd
-
-**What people do:** Remove claude-wrapper, set `ExecStart=claude ...` directly in the unit file, and rely on systemd's `Restart=` for all restarts.
-
-**Why it's wrong:** The v1.0 restart mechanism depends on the wrapper loop reading RESTART_FILE to pass new CLI args on relaunch. systemd cannot do this — it always restarts with the same `ExecStart` command. The `/clear` use case (restart with different mode) requires the wrapper.
-
-**Do this instead:** Keep the wrapper as `ExecStart`. systemd manages wrapper-level crashes; wrapper manages within-session restarts with arg changes.
-
-### Anti-Pattern 5: tmux as the Persistence Layer
-
-**What people do:** `ExecStart=tmux new-session -d -s claude ...` so the service runs in tmux.
-
-**Why it's wrong:** tmux uses `Type=forking` incompatibly, exits immediately after spawning the detached session confusing systemd, and the watchdog cannot reach the inner process. The session also doesn't attach to journald for log capture.
-
-**Do this instead:** Run the wrapper directly as `ExecStart`. Use `journalctl -fu claude` to see logs. If interactive access is needed, `systemctl stop claude` and run manually in tmux for that session.
-
----
-
-## Build Order (Dependencies)
-
-| Order | Component | Depends On | Rationale |
-|-------|-----------|------------|-----------|
-| 1 | Mode selection in wrapper | Nothing | Wrapper changes are prerequisite for everything else |
-| 2 | remote-control compatibility test | Mode selection | Validate restart works with `claude remote-control` args |
-| 3 | channels/Telegram compatibility test | Mode selection | Validate restart works with `--channels` args |
-| 4 | systemd unit file | Validated wrapper | Unit file must reference working wrapper |
-| 5 | install.sh systemd integration | systemd unit | Install adds systemd unit deployment + linger |
-| 6 | Keep-alive (inline in wrapper) | Wrapper mode selection | Idle prevention only needed after mode works |
-| 7 | Watchdog (inline in wrapper) | systemd unit installed | Watchdog subshell only useful when systemd WatchdogSec is set |
-
----
-
-## Scaling Considerations
-
-This is a personal VPS — one user, one claude session. Scaling is irrelevant. The architecture should optimize for simplicity and debuggability over throughput.
-
-| Concern | Approach |
-|---------|----------|
-| Multiple claude sessions | Out of scope (PROJECT.md) |
-| Multiple VPS machines | Each VPS gets its own service instance; no coordination |
-| Log retention | journald handles rotation; no additional tooling needed |
-
----
+**Phase ordering rationale:**
+- Phase 1 must come first because all other phases depend on per-instance path isolation
+- Phases 2-3 are the systemd + config foundation that the CLI wraps
+- Phase 4 (CLI) is the user-facing tool that ties 1-3 together
+- Phase 5 (installer) packages everything for deployment
+- Phase 6 (orchestra) is the capstone -- it is a Claude session with a CLAUDE.md that uses the tools built in phases 1-5; it requires no new code, only prompt engineering and a working multi-instance infrastructure
 
 ## Sources
 
-- [systemd.service official docs — Type, WatchdogSec, Restart, NotifyAccess](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html)
-- [sd_notify official docs — WATCHDOG=1 protocol](https://www.freedesktop.org/software/systemd/man/latest/sd_notify.html)
-- [systemd GitHub issue #25961 — NotifyAccess grand-child limitation](https://github.com/systemd/systemd/issues/25961)
-- [Claude Code Remote Control docs](https://code.claude.com/docs/en/remote-control)
-- [Claude Code Channels docs](https://code.claude.com/docs/en/channels)
-- [systemd user services — ArchWiki](https://wiki.archlinux.org/title/Systemd/User)
-- [systemd-notify for bash scripts — Baeldung](https://www.baeldung.com/linux/systemd-notify)
+- [systemd.unit man page](https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html) -- template unit specifiers (%i, %I), EnvironmentFile resolution order
+- [Fedora Magazine: systemd template unit files](https://fedoramagazine.org/systemd-template-unit-files/) -- practical template unit examples
+- [Claude Code: Run programmatically (headless)](https://code.claude.com/docs/en/headless) -- `-p` flag, `--bare`, `--output-format json`, `--continue`, `--resume`
+- [Claude Code: Remote Control](https://code.claude.com/docs/en/remote-control) -- server mode, `--name` flag, no programmatic message API
+- [Claude Code: Sub-agents](https://code.claude.com/docs/en/sub-agents) -- subagent spawning, cannot nest, isolated context
+- [Claude Code: Agent Teams](https://code.claude.com/docs/en/agent-teams) -- experimental cross-session coordination, limitations, not suitable for persistent services
+- [GitHub Issue #24947: `claude inject`](https://github.com/anthropics/claude-code/issues/24947) -- no programmatic message injection to running sessions (open, unresolved as of March 2026)
+- [GitHub Issue #2929: programmatically drive instances](https://github.com/anthropics/claude-code/issues/2929) -- confirms no inter-session messaging API
 
 ---
-*Architecture research for: VPS reliability layer — claude-wrapper + systemd + watchdog integration*
-*Researched: 2026-03-20*
+*Architecture research for: Claude Restart v2.0 Multi-Instance Orchestration*
+*Researched: 2026-03-22*
