@@ -16,6 +16,9 @@ mode_args=()
 case "${CLAUDE_CONNECT:-}" in
     remote-control)
         mode_args=("remote-control")
+        if [[ -n "${CLAUDE_INSTANCE_NAME:-}" && "${CLAUDE_INSTANCE_NAME}" != "default" ]]; then
+            mode_args+=("--name" "$CLAUDE_INSTANCE_NAME")
+        fi
         ;;
     telegram)
         mode_args=("--channels" "plugin:telegram@claude-plugins-official")
