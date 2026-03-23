@@ -14,9 +14,8 @@ updated: 2026-03-24T00:00:00Z
 
 ### 1. Dynamic Instrument Discovery at Runtime
 expected: Deploy orchestra and add a new instrument while orchestra is running. On the next GSD loop cycle, orchestra discovers the new instrument via list_peers, spawns an assessment agent, and begins driving it.
-result: issue
-reported: "The error: Unknown argument: --dangerously-load-development-channels -- the remote-control subcommand doesn't accept the --dangerously-load-development-channels flag from CLAUDE_CHANNELS. The channel args are being placed after the subcommand. The command being built is: claude remote-control --permission-mode bypassPermissions --name orchestra --dangerously-load-development-channels server:claude-peers. --dangerously-load-development-channels is a top-level claude flag, not a remote-control flag. The wrapper puts channel_args after mode_args, so they end up as arguments to the subcommand. For remote-control mode, channel args need to go before the subcommand."
-severity: blocker
+result: pending
+notes: "Previous blocker (channel_args ordering) resolved by 09-04. Needs re-test on VPS to confirm end-to-end flow."
 
 ### 2. Instrument Removal Handling
 expected: Remove an instrument (stop its service) while orchestra is running. Orchestra stops sending messages to the removed instrument and does not error-loop on stale peer IDs.
@@ -36,8 +35,8 @@ reason: "Blocked — requires VPS with running instance; cannot test locally"
 
 total: 3
 passed: 1
-issues: 1
-pending: 0
+issues: 0
+pending: 1
 skipped: 0
 blocked: 1
 
