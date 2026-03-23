@@ -382,6 +382,71 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# --- Test 19: remote-control mode includes --permission-mode bypassPermissions ---
+echo "Test 19: remote-control mode includes --permission-mode bypassPermissions"
+rm -f "$LOG" "$RESTART_FILE"
+create_mock 0
+CLAUDE_CONNECT=remote-control "$WRAPPER" 2>&1
+logged_args=$(cat "$LOG")
+assert_contains "remote-control has --permission-mode" "--permission-mode bypassPermissions" "$logged_args"
+
+# --- Test 20: remote-control mode filters --dangerously-skip-permissions from args ---
+echo "Test 20: remote-control mode filters --dangerously-skip-permissions"
+rm -f "$LOG" "$RESTART_FILE"
+create_mock 0
+CLAUDE_CONNECT=remote-control "$WRAPPER" --dangerously-skip-permissions --verbose 2>&1
+logged_args=$(cat "$LOG")
+assert_contains "has --permission-mode" "--permission-mode bypassPermissions" "$logged_args"
+assert_contains "has --verbose" "--verbose" "$logged_args"
+TOTAL=$((TOTAL + 1))
+if [[ "$logged_args" != *"--dangerously-skip-permissions"* ]]; then
+    echo "  PASS: --dangerously-skip-permissions filtered out"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: --dangerously-skip-permissions still present in args"
+    FAIL=$((FAIL + 1))
+fi
+
+# --- Test 21: remote-control mode pipes y to stdin for auto-confirm ---
+echo "Test 21: remote-control mode auto-confirms via stdin"
+rm -f "$LOG" "$RESTART_FILE"
+STDIN_LOG="$TMPDIR/stdin.log"
+rm -f "$STDIN_LOG"
+cat > "$MOCK_CLAUDE" << MOCKEOF
+#!/bin/bash
+echo "\$@" >> "$LOG"
+head -1 > "$STDIN_LOG"
+exit 0
+MOCKEOF
+chmod +x "$MOCK_CLAUDE"
+
+CLAUDE_CONNECT=remote-control "$WRAPPER" 2>&1
+stdin_content=$(cat "$STDIN_LOG" 2>/dev/null || echo "EMPTY")
+assert_eq "stdin receives y for auto-confirm" "y" "$stdin_content"
+
+# --- Test 22: interactive mode does NOT pipe y to stdin ---
+echo "Test 22: interactive mode does not pipe stdin"
+rm -f "$LOG" "$RESTART_FILE" "$STDIN_LOG"
+cat > "$MOCK_CLAUDE" << MOCKEOF
+#!/bin/bash
+echo "\$@" >> "$LOG"
+# Try to read stdin with timeout -- should get nothing
+read -t 1 line < /dev/stdin 2>/dev/null && echo "\$line" > "$STDIN_LOG" || true
+exit 0
+MOCKEOF
+chmod +x "$MOCK_CLAUDE"
+
+unset CLAUDE_CONNECT 2>/dev/null || true
+"$WRAPPER" --foo 2>&1
+TOTAL=$((TOTAL + 1))
+if [[ ! -s "$STDIN_LOG" ]]; then
+    echo "  PASS: interactive mode has no piped stdin"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: interactive mode unexpectedly received stdin: $(cat "$STDIN_LOG")"
+    FAIL=$((FAIL + 1))
+fi
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS/$TOTAL passed, $FAIL failed"
