@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 09-autonomous-orchestra
 source: [09-VERIFICATION.md]
 started: 2026-03-23T17:50:00Z
-updated: 2026-03-23T23:55:00Z
+updated: 2026-03-24T00:00:00Z
 ---
 
 ## Current Test
@@ -51,14 +51,8 @@ blocked: 1
   resolved_by: 09-03-PLAN.md
 
 - truth: "Orchestra discovers new instrument via list_peers and begins driving it"
-  status: failed
-  reason: "User reported: --dangerously-load-development-channels is a top-level claude flag, not a remote-control subcommand flag. Wrapper places channel_args after mode_args, so they land as arguments to the subcommand instead of before it."
+  status: resolved
+  reason: "Fixed in plan 09-04: swapped channel_args before mode_args at all three call sites so --dangerously-load-development-channels is parsed as a top-level flag"
   severity: blocker
   test: 1
-  root_cause: "bin/claude-wrapper lines 85, 106, 109 construct command as claude mode_args channel_args — but mode_args[0] is 'remote-control' subcommand, so channel_args end up as subcommand args. Need channel_args before mode_args."
-  artifacts:
-    - path: "bin/claude-wrapper"
-      issue: "Lines 85, 106, 109: channel_args placed after mode_args; mode_args[0] is subcommand 'remote-control'"
-  missing:
-    - "Swap to ${channel_args[@]} ${mode_args[@]} at all three call sites (lines 85, 106, 109)"
-  debug_session: ""
+  resolved_by: 09-04-PLAN.md
