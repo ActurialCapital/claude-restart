@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Instance Orchestration
-status: Milestone complete
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-03-23T17:49:11.112Z"
+status: Ready to execute
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-03-23T23:04:22.937Z"
 progress:
   total_phases: 3
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 8
+  completed_plans: 8
 ---
 
 # Project State
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 
 ## Current Position
 
-Phase: 09
-Plan: Not started
+Phase: 09 (autonomous-orchestra) — EXECUTING
+Plan: 2 of 3
 
 ## Accumulated Context
 
@@ -41,6 +41,7 @@ Full decision history archived in milestones/v1.0-ROADMAP.md and milestones/v1.1
 - [Phase 08]: Instrument working directories under ~/instruments/<name> by convention
 - [Phase 09]: Test extraction uses sed function body isolation instead of grep -A for reliability
 - [Phase 09]: Orchestra CLAUDE.md is pure prompt engineering -- the CLAUDE.md IS the orchestra supervisor
+- [Phase 09]: Permission flag baked into mode_args for remote-control; defensive filtering of --dangerously-skip-permissions
 
 ### Key v2.0 Architecture Decisions
 
@@ -65,6 +66,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T17:33:00Z
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-03-23T23:04:22.934Z
+Stopped at: Completed 09-03-PLAN.md
 Resume file: None
