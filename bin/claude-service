@@ -2,55 +2,212 @@
 # claude-service: manage the claude systemd user service
 set -euo pipefail
 
-# Instance-aware service name (per D-14)
-# Usage: claude-service <command> [instance-name]
-# Defaults to "default" when instance name omitted (per D-07)
-INSTANCE="${2:-default}"
-SERVICE="claude@${INSTANCE}.service"
-WATCHDOG_TIMER="claude-watchdog.timer"
+CONFIG_DIR="$HOME/.config/claude-restart"
+
+# Portable sed in-place (macOS needs '' argument, Linux does not)
+sed_inplace() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        sed -i '' "$@"
+    else
+        sed -i "$@"
+    fi
+}
 
 usage() {
-    echo "Usage: claude-service {start|stop|restart|status|logs|watchdog|heartbeat} [instance]"
+    echo "Usage: claude-service <command> [args]"
     echo ""
-    echo "Commands:"
-    echo "  start      Start the claude service"
-    echo "  stop       Stop the claude service"
-    echo "  restart    Restart the claude service"
-    echo "  status     Show service status"
-    echo "  logs       Follow service logs (journalctl)"
-    echo "  watchdog   Show watchdog timer status"
-    echo "  heartbeat  Show recent heartbeat log entries"
+    echo "Lifecycle commands:"
+    echo "  add <name> <git-url>   Add a new instrument"
+    echo "  remove <name>          Remove an instrument"
+    echo "  list                   List all instruments and status"
+    echo ""
+    echo "Instance commands:"
+    echo "  start [instance]       Start the claude service"
+    echo "  stop [instance]        Stop the claude service"
+    echo "  restart [instance]     Restart the claude service"
+    echo "  status [instance]      Show service status"
+    echo "  logs [instance]        Follow service logs (journalctl)"
+    echo "  watchdog [instance]    Show watchdog timer status"
+    echo "  heartbeat [instance]   Show recent heartbeat log entries"
     echo ""
     echo "Instance defaults to 'default' if not specified."
     echo "Examples:"
+    echo "  claude-service add myproject https://github.com/user/repo.git"
+    echo "  claude-service remove myproject"
+    echo "  claude-service list"
     echo "  claude-service status              # status of default instance"
     echo "  claude-service status myproject    # status of myproject instance"
 }
 
+do_add() {
+    local name="$1"
+    local git_url="$2"
+    local env_dir="$CONFIG_DIR/$name"
+    local work_dir="$HOME/instruments/$name"
+    local template="$CONFIG_DIR/env.template"
+
+    # Validate name (alphanumeric + hyphens only, must start with alphanumeric)
+    if [[ ! "$name" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]*$ ]]; then
+        echo "Error: instrument name must match ^[a-zA-Z0-9][a-zA-Z0-9-]*$" >&2
+        exit 1
+    fi
+
+    # Check for duplicate
+    if [[ -d "$env_dir" ]]; then
+        echo "Error: instrument '$name' already exists at $env_dir" >&2
+        exit 1
+    fi
+
+    # Check template exists
+    if [[ ! -f "$template" ]]; then
+        echo "Error: env.template not found at $template" >&2
+        echo "Run install.sh first to deploy the template." >&2
+        exit 1
+    fi
+
+    # Check default instance exists (for API key copy)
+    local default_env="$CONFIG_DIR/default/env"
+    if [[ ! -f "$default_env" ]]; then
+        echo "Error: default instance env not found at $default_env" >&2
+        echo "A default instance must exist to copy the API key from." >&2
+        exit 1
+    fi
+
+    # Clone repo
+    echo "Cloning $git_url to $work_dir..."
+    git clone "$git_url" "$work_dir"
+
+    # Create env from template
+    mkdir -p "$env_dir"
+    cp "$template" "$env_dir/env"
+
+    # Replace placeholders (same pattern as install.sh)
+    sed_inplace "s|INSTANCE_PLACEHOLDER|$name|g" "$env_dir/env"
+    sed_inplace "s|WORKING_DIR_PLACEHOLDER|$work_dir|g" "$env_dir/env"
+    sed_inplace "s|HOME_PLACEHOLDER|$HOME|g" "$env_dir/env"
+
+    # Copy API key from default instance
+    local api_key
+    api_key=$(grep '^ANTHROPIC_API_KEY=' "$default_env" | cut -d= -f2)
+    sed_inplace "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$api_key|" "$env_dir/env"
+
+    # Copy PATH line from default instance (avoids node version detection issues)
+    local default_path
+    default_path=$(grep '^PATH=' "$default_env")
+    if [[ -n "$default_path" ]]; then
+        sed_inplace "s|^PATH=.*|$default_path|" "$env_dir/env"
+    fi
+
+    chmod 600 "$env_dir/env"
+
+    # Enable systemd units (service + watchdog)
+    systemctl --user daemon-reload
+    systemctl --user enable --now "claude@${name}.service"
+    systemctl --user enable --now "claude-watchdog@${name}.timer"
+
+    echo "Instrument '$name' added and started"
+    echo "  Service: claude@${name}.service"
+    echo "  Watchdog: claude-watchdog@${name}.timer"
+    echo "  Config: $env_dir/env"
+    echo "  Working dir: $work_dir"
+}
+
+do_remove() {
+    local name="$1"
+    local env_dir="$CONFIG_DIR/$name"
+    local work_dir="$HOME/instruments/$name"
+
+    # Prevent removing default instance
+    if [[ "$name" == "default" ]]; then
+        echo "Error: cannot remove the default instance" >&2
+        exit 1
+    fi
+
+    # Check instrument exists
+    if [[ ! -d "$env_dir" ]]; then
+        echo "Error: instrument '$name' not found" >&2
+        exit 1
+    fi
+
+    # Stop and disable systemd units
+    systemctl --user stop "claude@${name}.service" 2>/dev/null || true
+    systemctl --user disable "claude@${name}.service" 2>/dev/null || true
+    systemctl --user stop "claude-watchdog@${name}.timer" 2>/dev/null || true
+    systemctl --user disable "claude-watchdog@${name}.timer" 2>/dev/null || true
+
+    # Delete config directory
+    rm -rf "$env_dir"
+
+    # Delete working directory
+    rm -rf "$work_dir"
+
+    echo "Instrument '$name' removed"
+    echo "  Stopped and disabled: claude@${name}.service, claude-watchdog@${name}.timer"
+    echo "  Deleted: $env_dir"
+    echo "  Deleted: $work_dir"
+}
+
+do_list() {
+    printf "%-20s %-10s\n" "INSTRUMENT" "STATUS"
+    printf "%-20s %-10s\n" "----------" "------"
+    for dir in "$CONFIG_DIR"/*/; do
+        [[ -d "$dir" ]] || continue
+        local name
+        name=$(basename "$dir")
+        local status
+        status=$(systemctl --user is-active "claude@${name}.service" 2>/dev/null || echo "unknown")
+        printf "%-20s %-10s\n" "$name" "$status"
+    done
+}
+
 case "${1:-}" in
-    start)
-        systemctl --user start "$SERVICE"
-        echo "Claude service started (${INSTANCE})"
+    add)
+        if [[ -z "${2:-}" || -z "${3:-}" ]]; then
+            echo "Usage: claude-service add <name> <git-url>" >&2
+            exit 1
+        fi
+        do_add "$2" "$3"
         ;;
-    stop)
-        systemctl --user stop "$SERVICE"
-        echo "Claude service stopped (${INSTANCE})"
+    remove)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: claude-service remove <name>" >&2
+            exit 1
+        fi
+        do_remove "$2"
         ;;
-    restart)
-        systemctl --user restart "$SERVICE"
-        echo "Claude service restarted (${INSTANCE})"
+    list)
+        do_list
         ;;
-    status)
-        systemctl --user status "$SERVICE"
-        ;;
-    logs)
-        journalctl --user -u "claude@${INSTANCE}" -f
-        ;;
-    watchdog)
-        systemctl --user status "$WATCHDOG_TIMER"
-        ;;
-    heartbeat)
-        journalctl --user -u "claude@${INSTANCE}" --grep="heartbeat sent" --no-pager -n 20
+    start|stop|restart|status|logs|watchdog|heartbeat)
+        # Instance-aware commands (existing)
+        INSTANCE="${2:-default}"
+        SERVICE="claude@${INSTANCE}.service"
+        case "$1" in
+            start)
+                systemctl --user start "$SERVICE"
+                echo "Claude service started (${INSTANCE})"
+                ;;
+            stop)
+                systemctl --user stop "$SERVICE"
+                echo "Claude service stopped (${INSTANCE})"
+                ;;
+            restart)
+                systemctl --user restart "$SERVICE"
+                echo "Claude service restarted (${INSTANCE})"
+                ;;
+            status)
+                systemctl --user status "$SERVICE"
+                ;;
+            logs)
+                journalctl --user -u "claude@${INSTANCE}" -f
+                ;;
+            watchdog)
+                systemctl --user status "claude-watchdog@${INSTANCE}.timer"
+                ;;
+            heartbeat)
+                journalctl --user -u "claude@${INSTANCE}" --grep="heartbeat sent" --no-pager -n 20
+                ;;
+        esac
         ;;
     --help|-h|"")
         usage
