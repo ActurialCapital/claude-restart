@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: VPS Reliability
-status: milestone complete
-stopped_at: v1.1 milestone archived
-last_updated: "2026-03-23T00:51:00.375Z"
+milestone: v2.0
+milestone_name: Multi-Instance Orchestration
+status: defining requirements
+stopped_at: null
+last_updated: "2026-03-22T12:00:00.000Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,31 +18,15 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-22)
 
-**Core value:** Claude can be restarted with new CLI options from within a session without manual exit-and-retype.
-**Current focus:** Planning next milestone
+**Core value:** Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
+**Current focus:** Defining requirements
 
 ## Current Position
 
-Milestone v1.1 complete. Ready for `/gsd:new-milestone`.
-
-## Performance Metrics
-
-**Velocity:**
-
-- Total plans completed: 6 (v1.1)
-- Average duration: ~3.5min/plan
-- Total execution time: ~21min
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| Phase 04 P01 | 2min | 1 tasks | 2 files |
-| Phase 04 P02 | 2min | 2 tasks | 4 files |
-| Phase 05 P01 | 1min | 2 tasks | 3 files |
-| Phase 05 P02 | 2min | 2 tasks | 2 files |
-| Phase 06 P01 | 12min | 2 tasks | 5 files |
-| Phase 06 P02 | 2min | 2 tasks | 3 files |
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-22 — Milestone v2.0 started
 
 ## Accumulated Context
 
@@ -51,16 +35,28 @@ Milestone v1.1 complete. Ready for `/gsd:new-milestone`.
 Decisions are logged in PROJECT.md Key Decisions table.
 Full decision history archived in milestones/v1.0-ROADMAP.md and milestones/v1.1-ROADMAP.md.
 
+### Key v2.0 Architecture Decisions
+
+- All sessions use `remote-control` mode (no Telegram in this milestone)
+- Instruments are isolated: one folder, one repo, one Claude session
+- Orchestra is optional, autonomous-only (no relay mode)
+- Orchestra is a supervisor/dispatcher, not a developer — instruments hold project intelligence
+- Orchestra spawns ad-hoc agents in project directories for research questions
+- `claude-restart` is the orchestration primitive for instrument context reset
+- Two interaction models coexist: direct instrument access (A) + orchestra access (B)
+- Dynamic instrument awareness: hot add/remove while system is running
+
 ### Pending Todos
 
 None.
 
 ### Blockers/Concerns
 
-None — milestone complete.
+- Need to research exact mechanics of connecting to `claude remote-control` sessions programmatically
+- Agent Teams (built-in experimental) is single-repo only — doesn't solve cross-project orchestration
 
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: v1.1 milestone archived
+Stopped at: Defining requirements for v2.0
 Resume file: None

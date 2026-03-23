@@ -2,11 +2,11 @@
 
 ## What This Is
 
-A restart mechanism for Claude Code that lets you restart the CLI session with new options from within a running session. Two shell scripts (wrapper + restart trigger), an installer, and a systemd service layer provide seamless restart-and-relaunch with full argument forwarding, crash recovery, and idle prevention on Linux VPS.
+A multi-instance management system for Claude Code on Linux VPS. Started as a restart mechanism (v1.0), grew into a reliability layer (v1.1), now evolving into an orchestration platform where multiple isolated Claude "instruments" — each in its own project folder and repo — are managed by systemd template units, with an optional autonomous "orchestra" session that supervises, dispatches work, and controls instrument lifecycle across projects.
 
 ## Core Value
 
-Claude can be restarted with new CLI options from within a session without manual exit-and-retype.
+Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
 
 ## Requirements
 
@@ -37,16 +37,35 @@ Claude can be restarted with new CLI options from within a session without manua
 
 ### Active
 
-(none — planning next milestone)
+- [ ] systemd template units (`claude@.service`) for multi-instance instrument management
+- [ ] Instrument lifecycle tooling — add/remove/list with single command
+- [ ] Dynamic instrument awareness — detect hot-added/removed instruments while running
+- [ ] Optional autonomous orchestra — supervisor/dispatcher across projects
+- [ ] Orchestra uses `claude-restart` to reboot instruments between phases (context reset)
+- [ ] Orchestra spawns ad-hoc agents in project directories for research questions
+- [ ] All sessions use `remote-control` mode, both interaction models coexist (direct + orchestra)
 
 ### Out of Scope
 
 - Slash command integration (`/restart`) — future milestone
-- Multi-instance support — assumes one claude session at a time
 - Session resume/context preservation across restarts — not in scope
-- Running both modes simultaneously — either remote-control or Telegram, not both
 - Smart watchdog with activity detection — periodic restart is simpler and avoids false positives
 - launchd (macOS service management) — personal VPS is Linux; macOS is dev only
+- Telegram integration — future add-on on top of remote-control
+- Orchestra relay mode — autonomous only; direct access covers manual interaction
+- Orchestra making project-level implementation decisions — instruments hold project intelligence
+
+## Current Milestone: v2.0 Multi-Instance Orchestration
+
+**Goal:** Run multiple isolated Claude instruments on a VPS with easy lifecycle management and an optional autonomous orchestra that supervises, dispatches, and controls instruments across separate projects.
+
+**Target features:**
+- systemd template units for multi-instance instrument management
+- Instrument lifecycle tooling (add/remove/list)
+- Dynamic instrument awareness (hot add/remove while running)
+- Optional autonomous orchestra (supervisor/dispatcher + ad-hoc research agents)
+- Orchestra uses claude-restart for instrument context reset between phases
+- All sessions use remote-control mode
 
 ## Context
 
@@ -55,7 +74,9 @@ Tech stack: Pure bash, zsh shell integration, systemd for Linux service manageme
 Scripts: `bin/claude-wrapper`, `bin/claude-restart`, `bin/install.sh`, `bin/claude-service`.
 Artifacts: `systemd/claude.service`, `systemd/claude-watchdog.timer`, `systemd/claude-watchdog.service`, `systemd/env.template`.
 
-VPS environment: Personal Linux server with systemd and tmux. Telegram plugin goes unresponsive without crashing — watchdog timer handles periodic forced restart, FIFO heartbeat prevents idle timeout. `claude remote-control` is an alternative mode with built-in reconnection.
+VPS environment: Personal Linux server with systemd and tmux. User manages VPS from phone, running multiple projects each with its own Claude instance and cloned repository. Architecture: "instruments" (isolated Claude sessions per project) + optional "orchestra" (autonomous supervisor). All sessions use `claude remote-control` for phone interaction. Two interaction models coexist: direct instrument access and centralized orchestra access.
+
+Existing tools map to new architecture: `claude-restart` becomes the orchestration primitive for instrument lifecycle control (context reset between phases). systemd template units (`claude@.service`) replace single-instance service. The orchestra is a Claude session that dispatches work, monitors status, and spawns temporary agents in project directories for research questions.
 
 ## Constraints
 
@@ -98,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-22 after v1.1 milestone*
+*Last updated: 2026-03-22 after v2.0 milestone start*
