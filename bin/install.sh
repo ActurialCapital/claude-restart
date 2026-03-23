@@ -12,7 +12,9 @@ SENTINEL_END="# <<< claude-restart <<<"
 
 SYSTEMD_USER_DIR="${CLAUDE_RESTART_SYSTEMD_DIR:-$HOME/.config/systemd/user}"
 ENV_DIR="${CLAUDE_RESTART_ENV_DIR:-$HOME/.config/claude-restart}"
-ENV_FILE="$ENV_DIR/env"
+DEFAULT_INSTANCE="default"
+INSTANCE_DIR="$ENV_DIR/$DEFAULT_INSTANCE"
+ENV_FILE="$INSTANCE_DIR/env"
 
 # Portable sed in-place (macOS needs '' argument, Linux does not)
 # Uses actual OS (uname), not PLATFORM which may be overridden for testing
@@ -28,6 +30,57 @@ usage() {
     echo "Usage: install.sh [--install | --uninstall | --help]"
 }
 
+# Migrate v1.1 flat env to v2.0 per-instance directory (per D-08)
+migrate_v1_env() {
+    local old_env="$ENV_DIR/env"
+    local new_dir="$ENV_DIR/$DEFAULT_INSTANCE"
+    local new_env="$new_dir/env"
+
+    # Only migrate if flat env exists AND instance dir does not
+    if [[ -f "$old_env" && ! -d "$new_dir" ]]; then
+        echo "claude-restart: migrating v1.1 env to per-instance layout..."
+        mkdir -p "$new_dir"
+        cp "$old_env" "$new_env"
+
+        # Add new variables if missing from migrated env
+        if ! grep -q 'CLAUDE_INSTANCE_NAME' "$new_env"; then
+            echo "" >> "$new_env"
+            echo "# Instance name (used by wrapper for --name flag)" >> "$new_env"
+            echo "CLAUDE_INSTANCE_NAME=$DEFAULT_INSTANCE" >> "$new_env"
+        fi
+        if ! grep -q 'CLAUDE_RESTART_FILE' "$new_env"; then
+            echo "" >> "$new_env"
+            echo "# Per-instance restart file path" >> "$new_env"
+            echo "CLAUDE_RESTART_FILE=$HOME/.config/claude-restart/$DEFAULT_INSTANCE/restart" >> "$new_env"
+        fi
+        if ! grep -q 'CLAUDE_MEMORY_MAX' "$new_env"; then
+            echo "" >> "$new_env"
+            echo "# Memory limit for this instance (systemd MemoryMax)" >> "$new_env"
+            echo "CLAUDE_MEMORY_MAX=1G" >> "$new_env"
+        fi
+        if ! grep -q 'WORKING_DIRECTORY' "$new_env"; then
+            # Try to extract WorkingDirectory from existing systemd unit
+            local work_dir=""
+            if [[ -f "$SYSTEMD_USER_DIR/claude.service" ]]; then
+                work_dir=$(grep '^WorkingDirectory=' "$SYSTEMD_USER_DIR/claude.service" 2>/dev/null | cut -d= -f2)
+            fi
+            if [[ -z "$work_dir" ]]; then
+                work_dir="$HOME"
+            fi
+            echo "" >> "$new_env"
+            echo "# Working directory for this instrument" >> "$new_env"
+            echo "WORKING_DIRECTORY=$work_dir" >> "$new_env"
+        fi
+
+        chmod 600 "$new_env"
+
+        # Backup and remove old flat env
+        cp "$old_env" "$old_env.v1-backup"
+        rm -f "$old_env"
+        echo "claude-restart: migrated $old_env -> $new_env (backup at $old_env.v1-backup)"
+    fi
+}
+
 do_install_linux() {
     # 1. Copy scripts to install dir
     mkdir -p "$INSTALL_DIR"
@@ -38,12 +91,15 @@ do_install_linux() {
     cp "$SCRIPT_DIR/claude-service" "$INSTALL_DIR/claude-service"
     chmod +x "$INSTALL_DIR/claude-service"
 
-    # 2. Prompt for working directory (per D-10)
+    # 1b. Migrate v1.1 env if present (per D-08)
+    migrate_v1_env
+
+    # 2. Prompt for working directory (stored in env file per D-04)
     read -rp "Working directory for Claude [$(pwd)]: " WORK_DIR
     WORK_DIR="${WORK_DIR:-$(pwd)}"
 
-    # 3. Create env file (per D-11)
-    mkdir -p "$ENV_DIR"
+    # 3. Create per-instance env file (per D-02)
+    mkdir -p "$INSTANCE_DIR"
     if [[ -f "$ENV_FILE" ]]; then
         echo "claude-restart: env file already exists at $ENV_FILE (skipping)"
     else
@@ -55,10 +111,11 @@ do_install_linux() {
 
         cp "$SCRIPT_DIR/../systemd/env.template" "$ENV_FILE"
         sed_inplace "s|HOME_PLACEHOLDER|$HOME|g" "$ENV_FILE"
+        sed_inplace "s|INSTANCE_PLACEHOLDER|$DEFAULT_INSTANCE|g" "$ENV_FILE"
+        sed_inplace "s|WORKING_DIR_PLACEHOLDER|$WORK_DIR|g" "$ENV_FILE"
         if [[ -n "$NODE_VERSION" ]]; then
             sed_inplace "s|NODEVERSION_PLACEHOLDER|$NODE_VERSION|g" "$ENV_FILE"
         else
-            # Remove the nvm path segment if no node found
             sed_inplace "/NODEVERSION_PLACEHOLDER/d" "$ENV_FILE"
         fi
 
@@ -77,36 +134,40 @@ do_install_linux() {
         echo "Created env file at $ENV_FILE"
     fi
 
-    # 4. Install systemd unit file (per D-01, D-06)
+    # 4. Install systemd template unit file (per D-05)
     mkdir -p "$SYSTEMD_USER_DIR"
-    cp "$SCRIPT_DIR/../systemd/claude.service" "$SYSTEMD_USER_DIR/claude.service"
-    sed_inplace "s|WORKING_DIR_PLACEHOLDER|$WORK_DIR|" "$SYSTEMD_USER_DIR/claude.service"
-    echo "Installed systemd unit file to $SYSTEMD_USER_DIR/claude.service"
+    cp "$SCRIPT_DIR/../systemd/claude@.service" "$SYSTEMD_USER_DIR/claude@.service"
+    echo "Installed systemd template unit to $SYSTEMD_USER_DIR/claude@.service"
 
-    # 5. Install watchdog timer and oneshot (per D-12)
+    # Remove old non-template unit if present (migration from v1.1)
+    if [[ -f "$SYSTEMD_USER_DIR/claude.service" ]]; then
+        systemctl --user stop claude.service 2>/dev/null || true
+        systemctl --user disable claude.service 2>/dev/null || true
+        rm -f "$SYSTEMD_USER_DIR/claude.service"
+        echo "Removed old claude.service (replaced by template unit)"
+    fi
+
+    # 5. Install watchdog timer and oneshot (not yet templated -- Phase 8)
     cp "$SCRIPT_DIR/../systemd/claude-watchdog.timer" "$SYSTEMD_USER_DIR/claude-watchdog.timer"
     cp "$SCRIPT_DIR/../systemd/claude-watchdog.service" "$SYSTEMD_USER_DIR/claude-watchdog.service"
 
-    # Replace watchdog hours placeholder with value from env file (default 8)
     WATCHDOG_HOURS="${CLAUDE_WATCHDOG_HOURS:-8}"
     sed_inplace "s|CLAUDE_WATCHDOG_HOURS_PLACEHOLDER|$WATCHDOG_HOURS|g" "$SYSTEMD_USER_DIR/claude-watchdog.timer"
     echo "Installed watchdog timer ($WATCHDOG_HOURS hour interval) to $SYSTEMD_USER_DIR/"
 
-    # 6. Enable linger and start service (per D-08, D-09)
-    # Enable linger for boot persistence (per D-08)
+    # 6. Enable linger and start default instance (per D-06)
     loginctl enable-linger "$USER" 2>/dev/null || echo "Warning: loginctl enable-linger failed (may need root)"
 
-    # Reload, enable, and start (per D-09)
     systemctl --user daemon-reload
-    systemctl --user enable claude.service
-    systemctl --user start claude.service
-    echo "Claude service enabled and started"
+    systemctl --user enable "claude@${DEFAULT_INSTANCE}.service"
+    systemctl --user start "claude@${DEFAULT_INSTANCE}.service"
+    echo "Claude service (default instance) enabled and started"
 
     systemctl --user enable claude-watchdog.timer
     systemctl --user start claude-watchdog.timer
     echo "Watchdog timer enabled and started"
 
-    echo "Manage with: claude-service {start|stop|restart|status|logs|watchdog|heartbeat}"
+    echo "Manage with: claude-service {start|stop|restart|status|logs} [instance]"
 }
 
 do_install_macos() {
@@ -161,7 +222,7 @@ do_uninstall() {
         echo "claude-restart: no configuration found in $ZSHRC"
     fi
 
-    # 3. Remove systemd service if on Linux
+    # 3. Remove systemd services if on Linux
     if [[ "$PLATFORM" == "Linux" ]]; then
         # Stop and remove watchdog timer
         systemctl --user stop claude-watchdog.timer 2>/dev/null || true
@@ -169,11 +230,23 @@ do_uninstall() {
         rm -f "$SYSTEMD_USER_DIR/claude-watchdog.timer"
         rm -f "$SYSTEMD_USER_DIR/claude-watchdog.service"
 
-        systemctl --user stop claude.service 2>/dev/null || true
-        systemctl --user disable claude.service 2>/dev/null || true
+        # Stop and remove all template instances
+        for env_dir in "$ENV_DIR"/*/; do
+            if [[ -d "$env_dir" ]]; then
+                inst_name=$(basename "$env_dir")
+                systemctl --user stop "claude@${inst_name}.service" 2>/dev/null || true
+                systemctl --user disable "claude@${inst_name}.service" 2>/dev/null || true
+            fi
+        done
+
+        # Remove template unit
+        rm -f "$SYSTEMD_USER_DIR/claude@.service"
+        # Remove old non-template unit if still present
         rm -f "$SYSTEMD_USER_DIR/claude.service"
-        rm -f "$ENV_FILE"
-        echo "Removed systemd service, watchdog timer, and env file"
+
+        # Remove all env directories
+        rm -rf "$ENV_DIR"
+        echo "Removed systemd services, watchdog timer, and env files"
     fi
 
     # 4. Print success
