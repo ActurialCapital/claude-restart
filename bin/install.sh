@@ -149,13 +149,19 @@ do_install_linux() {
         echo "Removed old claude.service (replaced by template unit)"
     fi
 
-    # 5. Install watchdog timer and oneshot (not yet templated -- Phase 8)
-    cp "$SCRIPT_DIR/../systemd/claude-watchdog.timer" "$SYSTEMD_USER_DIR/claude-watchdog.timer"
-    cp "$SCRIPT_DIR/../systemd/claude-watchdog.service" "$SYSTEMD_USER_DIR/claude-watchdog.service"
+    # 5. Install watchdog template units (Phase 8: per-instance watchdog)
+    cp "$SCRIPT_DIR/../systemd/claude-watchdog@.service" "$SYSTEMD_USER_DIR/claude-watchdog@.service"
+    cp "$SCRIPT_DIR/../systemd/claude-watchdog@.timer" "$SYSTEMD_USER_DIR/claude-watchdog@.timer"
+    echo "Installed watchdog template units to $SYSTEMD_USER_DIR/"
 
-    WATCHDOG_HOURS="${CLAUDE_WATCHDOG_HOURS:-8}"
-    sed_inplace "s|CLAUDE_WATCHDOG_HOURS_PLACEHOLDER|$WATCHDOG_HOURS|g" "$SYSTEMD_USER_DIR/claude-watchdog.timer"
-    echo "Installed watchdog timer ($WATCHDOG_HOURS hour interval) to $SYSTEMD_USER_DIR/"
+    # Migrate old non-template watchdog units if present
+    if [[ -f "$SYSTEMD_USER_DIR/claude-watchdog.timer" ]]; then
+        systemctl --user stop claude-watchdog.timer 2>/dev/null || true
+        systemctl --user disable claude-watchdog.timer 2>/dev/null || true
+        rm -f "$SYSTEMD_USER_DIR/claude-watchdog.timer"
+        rm -f "$SYSTEMD_USER_DIR/claude-watchdog.service"
+        echo "Removed old non-template watchdog units (replaced by template units)"
+    fi
 
     # 6. Enable linger and start default instance (per D-06)
     loginctl enable-linger "$USER" 2>/dev/null || echo "Warning: loginctl enable-linger failed (may need root)"
@@ -165,9 +171,9 @@ do_install_linux() {
     systemctl --user start "claude@${DEFAULT_INSTANCE}.service"
     echo "Claude service (default instance) enabled and started"
 
-    systemctl --user enable claude-watchdog.timer
-    systemctl --user start claude-watchdog.timer
-    echo "Watchdog timer enabled and started"
+    systemctl --user enable "claude-watchdog@${DEFAULT_INSTANCE}.timer"
+    systemctl --user start "claude-watchdog@${DEFAULT_INSTANCE}.timer"
+    echo "Watchdog timer enabled for default instance"
 
     echo "Manage with: claude-service {start|stop|restart|status|logs} [instance]"
 }
@@ -226,9 +232,17 @@ do_uninstall() {
 
     # 3. Remove systemd services if on Linux
     if [[ "$PLATFORM" == "Linux" ]]; then
-        # Stop and remove watchdog timer
-        systemctl --user stop claude-watchdog.timer 2>/dev/null || true
-        systemctl --user disable claude-watchdog.timer 2>/dev/null || true
+        # Stop and remove all watchdog timers (template instances)
+        for env_dir in "$ENV_DIR"/*/; do
+            if [[ -d "$env_dir" ]]; then
+                inst_name=$(basename "$env_dir")
+                systemctl --user stop "claude-watchdog@${inst_name}.timer" 2>/dev/null || true
+                systemctl --user disable "claude-watchdog@${inst_name}.timer" 2>/dev/null || true
+            fi
+        done
+        rm -f "$SYSTEMD_USER_DIR/claude-watchdog@.timer"
+        rm -f "$SYSTEMD_USER_DIR/claude-watchdog@.service"
+        # Also clean up old non-template units if still present
         rm -f "$SYSTEMD_USER_DIR/claude-watchdog.timer"
         rm -f "$SYSTEMD_USER_DIR/claude-watchdog.service"
 
