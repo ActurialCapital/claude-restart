@@ -17,14 +17,14 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 ### Instrument Lifecycle
 
-- [ ] **LIFE-01**: User can add an instrument with a single command (clone repo, create env file, enable systemd service, register in manifest)
-- [ ] **LIFE-02**: User can remove an instrument with a single command (stop service, clean up config, deregister from manifest)
-- [ ] **LIFE-03**: User can list all instruments with their status (running/stopped/failed)
+- [x] **LIFE-01**: User can add an instrument with a single command (clone repo, create env file, enable systemd service, register in manifest)
+- [x] **LIFE-02**: User can remove an instrument with a single command (stop service, clean up config, deregister from manifest)
+- [x] **LIFE-03**: User can list all instruments with their status (running/stopped/failed)
 
 ### Watchdog Migration
 
 - [x] **WDOG-04**: Watchdog timer is templated per-instance (`claude-watchdog@.timer`) and paired automatically with instrument lifecycle
-- [ ] **WDOG-05**: Adding an instrument enables its watchdog timer; removing an instrument disables it
+- [x] **WDOG-05**: Adding an instrument enables its watchdog timer; removing an instrument disables it
 
 ### Wrapper Adaptation
 
@@ -79,11 +79,11 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 | INST-05 | Phase 7 | Complete |
 | WRAP-05 | Phase 7 | Complete |
 | WRAP-06 | Phase 7 | Complete |
-| LIFE-01 | Phase 8 | Pending |
-| LIFE-02 | Phase 8 | Pending |
-| LIFE-03 | Phase 8 | Pending |
+| LIFE-01 | Phase 8 | Complete |
+| LIFE-02 | Phase 8 | Complete |
+| LIFE-03 | Phase 8 | Complete |
 | WDOG-04 | Phase 8 | Complete |
-| WDOG-05 | Phase 8 | Pending |
+| WDOG-05 | Phase 8 | Complete |
 | ORCH-01 | Phase 9 | Pending |
 | ORCH-02 | Phase 9 | Pending |
 | ORCH-03 | Phase 9 | Pending |

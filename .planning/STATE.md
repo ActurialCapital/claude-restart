@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Instance Orchestration
-status: Ready to execute
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-23T14:15:26.264Z"
+status: Ready to plan
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-23T14:23:55.150Z"
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 5
 ---
 
 # Project State
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 
 ## Current Position
 
-Phase: 08 (instrument-lifecycle) — EXECUTING
-Plan: 2 of 2
+Phase: 9
+Plan: Not started
 
 ## Accumulated Context
 
@@ -37,6 +37,8 @@ Full decision history archived in milestones/v1.0-ROADMAP.md and milestones/v1.1
 - [Phase 07]: Scripts use CLAUDE_INSTANCE_NAME and --instance flag for instance targeting, defaulting to backward-compatible behavior
 - [Phase 07]: Migration creates env.v1-backup before removing flat env file; WorkingDirectory extracted from old claude.service when possible
 - [Phase 08]: Hardcoded 8h timer intervals in watchdog template (systemd timer directives cannot read env vars)
+- [Phase 08]: API key and PATH copied from default instance env for non-interactive orchestra automation
+- [Phase 08]: Instrument working directories under ~/instruments/<name> by convention
 
 ### Key v2.0 Architecture Decisions
 
@@ -61,6 +63,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T14:15:26.261Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-03-23T14:20:42.647Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
