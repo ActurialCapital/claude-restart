@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A restart mechanism for Claude Code that lets you restart the CLI session with new options from within a running session. Two shell scripts (wrapper + restart trigger) and an installer provide seamless restart-and-relaunch with full argument forwarding.
+A restart mechanism for Claude Code that lets you restart the CLI session with new options from within a running session. Two shell scripts (wrapper + restart trigger), an installer, and a systemd service layer provide seamless restart-and-relaunch with full argument forwarding, crash recovery, and idle prevention on Linux VPS.
 
 ## Core Value
 
@@ -22,22 +22,22 @@ Claude can be restarted with new CLI options from within a session without manua
 - ✓ Default restart writes env var defaults when no args given — v1.0
 - ✓ Shell alias/function launches claude via the wrapper — v1.0
 - ✓ Install script with idempotent zshrc modification — v1.0
-- ✓ SIGTERM forwarding to child process, SIGHUP ignore — Phase 04
-- ✓ Mode selection via CLAUDE_CONNECT env var (remote-control, telegram, interactive) — Phase 04
-- ✓ Mode-aware restart (mode base args preserved across restarts) — Phase 04
-- ✓ Installer uses CLAUDE_CONNECT instead of hardcoded channel string — Phase 04
-- ✓ systemd user service with Restart=on-failure and StartLimitBurst — Phase 05
-- ✓ Environment file template for API keys and config — Phase 05
-- ✓ claude-service management helper (start/stop/restart/status/logs) — Phase 05
-- ✓ Linux installer path deploying systemd artifacts with linger — Phase 05
-- ✓ Watchdog timer for periodic forced restart (mode-aware, skips remote-control) — Phase 06
-- ✓ Keep-alive heartbeat via FIFO stdin in telegram mode — Phase 06
-- ✓ Installer deploys watchdog timer/oneshot with configurable interval — Phase 06
-- ✓ claude-service watchdog and heartbeat status subcommands — Phase 06
+- ✓ SIGTERM forwarding to child process, SIGHUP ignore — v1.1
+- ✓ Mode selection via CLAUDE_CONNECT env var (remote-control, telegram, interactive) — v1.1
+- ✓ Mode-aware restart (mode base args preserved across restarts) — v1.1
+- ✓ Installer uses CLAUDE_CONNECT instead of hardcoded channel string — v1.1
+- ✓ systemd user service with Restart=on-failure and StartLimitBurst — v1.1
+- ✓ Environment file template for API keys and config — v1.1
+- ✓ claude-service management helper (start/stop/restart/status/logs) — v1.1
+- ✓ Linux installer path deploying systemd artifacts with linger — v1.1
+- ✓ Watchdog timer for periodic forced restart (mode-aware, skips remote-control) — v1.1
+- ✓ Keep-alive heartbeat via FIFO stdin in telegram mode — v1.1
+- ✓ Installer deploys watchdog timer/oneshot with configurable interval — v1.1
+- ✓ claude-service watchdog and heartbeat status subcommands — v1.1
 
 ### Active
 
-(none — all v1.1 requirements validated)
+(none — planning next milestone)
 
 ### Out of Scope
 
@@ -45,28 +45,17 @@ Claude can be restarted with new CLI options from within a session without manua
 - Multi-instance support — assumes one claude session at a time
 - Session resume/context preservation across restarts — not in scope
 - Running both modes simultaneously — either remote-control or Telegram, not both
-
-## Current Milestone: v1.1 VPS Reliability
-
-**Goal:** Make Claude Code resilient on a personal Linux VPS — survive crashes, SSH drops, and idle timeouts.
-
-**Target features:**
-- Restart compatibility with `claude remote-control` and `claude --channels plugin:telegram@...`
-- Mode selection (either mode, not both simultaneously)
-- systemd service for auto-restart
-- Watchdog for hung/unresponsive detection
-- Keep-alive for idle timeout prevention
-- Only build what remote-control doesn't already handle
+- Smart watchdog with activity detection — periodic restart is simpler and avoids false positives
+- launchd (macOS service management) — personal VPS is Linux; macOS is dev only
 
 ## Context
 
-Shipped v1.0 with 201 LOC shell + 415 LOC tests. Phase 04 added signal handling, mode selection, and mode-aware restart. Phase 05 added systemd service layer and Linux installer path. Phase 06 added watchdog timer for periodic forced restarts and FIFO-based keep-alive heartbeat for telegram mode.
+Shipped v1.1 with 260 LOC shell + 918 LOC tests across 3 test suites (82 assertions).
 Tech stack: Pure bash, zsh shell integration, systemd for Linux service management.
 Scripts: `bin/claude-wrapper`, `bin/claude-restart`, `bin/install.sh`, `bin/claude-service`.
 Artifacts: `systemd/claude.service`, `systemd/claude-watchdog.timer`, `systemd/claude-watchdog.service`, `systemd/env.template`.
-82 assertions across 3 test suites, all passing.
 
-VPS environment: Personal Linux server with systemd and tmux. Currently SSH in, start tmux, run claude manually. Telegram plugin (`--channels plugin:telegram@claude-plugins-official`) goes unresponsive without crashing — process alive but no response to messages. `claude remote-control` is an alternative mode but doesn't support `/clear`, so v1.0 restart mechanism is needed for context resets.
+VPS environment: Personal Linux server with systemd and tmux. Telegram plugin goes unresponsive without crashing — watchdog timer handles periodic forced restart, FIFO heartbeat prevents idle timeout. `claude remote-control` is an alternative mode with built-in reconnection.
 
 ## Constraints
 
@@ -85,6 +74,11 @@ VPS environment: Personal Linux server with systemd and tmux. Currently SSH in, 
 | Environment variable overrides for testability | Tests run in <1s instead of 20s+ with real delays | ✓ Good |
 | Sentinel markers for zshrc modification | Enables idempotent install and clean uninstall | ✓ Good |
 | Graceful degradation when PID not found | File still written so wrapper can restart even if kill fails | ✓ Good |
+| CLAUDE_CONNECT env var for mode selection | Single env var maps to CLI args, shared by service + wrapper + watchdog via EnvironmentFile | ✓ Good |
+| Restart=on-failure not Restart=always | Avoids double-restart loop (wrapper + systemd both reacting to same exit) | ✓ Good |
+| FIFO-based stdin for heartbeat | Cross-platform (macOS + Linux), no process substitution dependency | ✓ Good |
+| Mode-aware watchdog (telegram only) | remote-control has built-in reconnection, watchdog would cause unnecessary disruption | ✓ Good |
+| StartLimitBurst in [Unit] not [Service] | Silently ignored in [Service] section — systemd gotcha discovered during Phase 05 | ✓ Good |
 
 ## Evolution
 
@@ -104,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-21 after Phase 06 watchdog-and-keep-alive complete*
+*Last updated: 2026-03-22 after v1.1 milestone*

@@ -1,5 +1,20 @@
 # Milestones
 
+## v1.1 VPS Reliability (Shipped: 2026-03-23)
+
+**Phases completed:** 3 phases, 6 plans, 11 tasks
+
+**Key accomplishments:**
+
+- SIGTERM forwarding to child process, SIGHUP ignore, and CLAUDE_CONNECT env var mode selection (remote-control/telegram/interactive)
+- Mode-aware restart preserving CLAUDE_CONNECT mode args across restarts, installer migrated from hardcoded channel string to CLAUDE_CONNECT env var
+- systemd user service unit file, env template with API key/PATH/mode placeholders, and claude-service helper with start/stop/restart/status/logs subcommands
+- Platform-aware installer that deploys systemd unit file, env file with prompted API key/mode, enables linger, and starts service -- with 7 new test cases using mocked systemctl/loginctl
+- Systemd watchdog timer with mode-aware oneshot restart and FIFO-based stdin heartbeat for telegram mode
+- Installer deploys watchdog timer/oneshot with configurable hours, claude-service gains watchdog and heartbeat subcommands, 49 tests passing
+
+---
+
 ## v1.0 MVP (Shipped: 2026-03-21)
 
 **Phases:** 3 | **Plans:** 3 | **Tasks:** 6
