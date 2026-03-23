@@ -18,6 +18,7 @@ usage() {
     echo ""
     echo "Lifecycle commands:"
     echo "  add <name> <git-url>   Add a new instrument"
+    echo "  add-orchestra          Register the orchestra instrument (no git clone)"
     echo "  remove <name>          Remove an instrument"
     echo "  list                   List all instruments and status"
     echo ""
@@ -35,6 +36,7 @@ usage() {
     echo "  claude-service add myproject https://github.com/user/repo.git"
     echo "  claude-service remove myproject"
     echo "  claude-service list"
+    echo "  claude-service add-orchestra"
     echo "  claude-service status              # status of default instance"
     echo "  claude-service status myproject    # status of myproject instance"
 }
@@ -112,6 +114,76 @@ do_add() {
     echo "  Working dir: $work_dir"
 }
 
+do_add_orchestra() {
+    local name="orchestra"
+    local env_dir="$CONFIG_DIR/$name"
+    local work_dir="$HOME/instruments/$name"
+    local template="$CONFIG_DIR/env.template"
+
+    # Check for duplicate
+    if [[ -d "$env_dir" ]]; then
+        echo "Error: orchestra already exists at $env_dir" >&2
+        exit 1
+    fi
+
+    # Check template exists
+    if [[ ! -f "$template" ]]; then
+        echo "Error: env.template not found at $template" >&2
+        echo "Run install.sh first to deploy the template." >&2
+        exit 1
+    fi
+
+    # Check default instance exists (for API key copy)
+    local default_env="$CONFIG_DIR/default/env"
+    if [[ ! -f "$default_env" ]]; then
+        echo "Error: default instance env not found at $default_env" >&2
+        echo "A default instance must exist to copy the API key from." >&2
+        exit 1
+    fi
+
+    # Create working directory (no git clone)
+    mkdir -p "$work_dir"
+
+    # Create env from template
+    mkdir -p "$env_dir"
+    cp "$template" "$env_dir/env"
+
+    # Replace placeholders
+    sed_inplace "s|INSTANCE_PLACEHOLDER|$name|g" "$env_dir/env"
+    sed_inplace "s|WORKING_DIR_PLACEHOLDER|$work_dir|g" "$env_dir/env"
+    sed_inplace "s|HOME_PLACEHOLDER|$HOME|g" "$env_dir/env"
+
+    # Copy API key from default instance
+    local api_key
+    api_key=$(grep '^ANTHROPIC_API_KEY=' "$default_env" | cut -d= -f2)
+    sed_inplace "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$api_key|" "$env_dir/env"
+
+    # Copy PATH line from default instance
+    local default_path
+    default_path=$(grep '^PATH=' "$default_env")
+    if [[ -n "$default_path" ]]; then
+        sed_inplace "s|^PATH=.*|$default_path|" "$env_dir/env"
+    fi
+
+    # Set CLAUDE_CHANNELS for claude-peers
+    sed_inplace "s|^CLAUDE_CHANNELS=.*|CLAUDE_CHANNELS=server:claude-peers|" "$env_dir/env"
+
+    chmod 600 "$env_dir/env"
+
+    # Enable systemd units
+    systemctl --user daemon-reload
+    systemctl --user enable --now "claude@${name}.service"
+    systemctl --user enable --now "claude-watchdog@${name}.timer"
+
+    echo "Orchestra instrument registered and started"
+    echo "  Service: claude@${name}.service"
+    echo "  Watchdog: claude-watchdog@${name}.timer"
+    echo "  Config: $env_dir/env"
+    echo "  Working dir: $work_dir"
+    echo ""
+    echo "Next: place orchestra CLAUDE.md at $work_dir/CLAUDE.md"
+}
+
 do_remove() {
     local name="$1"
     local env_dir="$CONFIG_DIR/$name"
@@ -167,6 +239,9 @@ case "${1:-}" in
             exit 1
         fi
         do_add "$2" "$3"
+        ;;
+    add-orchestra)
+        do_add_orchestra
         ;;
     remove)
         if [[ -z "${2:-}" ]]; then
