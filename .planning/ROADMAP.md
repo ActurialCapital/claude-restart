@@ -48,8 +48,8 @@
 
 Plans:
 - [x] 07-01-PLAN.md — Create systemd template unit and updated env template
-- [ ] 07-02-PLAN.md — Make wrapper, restart, and service scripts instance-aware
-- [ ] 07-03-PLAN.md — Update installer with template deployment and v1.1 migration
+- [x] 07-02-PLAN.md — Make wrapper, restart, and service scripts instance-aware
+- [x] 07-03-PLAN.md — Update installer with template deployment and v1.1 migration
 
 ### Phase 8: Instrument Lifecycle
 **Goal**: User manages the full instrument fleet with single commands, and every instrument automatically gets a watchdog timer

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Instance Orchestration
-status: Ready to execute
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-23T03:50:54.199Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 07-03-PLAN.md (checkpoint pending)
+last_updated: "2026-03-23T03:55:43.751Z"
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 3
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 07 (template-unit-foundation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Accumulated Context
 
@@ -34,6 +34,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 Full decision history archived in milestones/v1.0-ROADMAP.md and milestones/v1.1-ROADMAP.md.
 
 - [Phase 07]: MemoryMax applied via ExecStartPre + systemctl set-property (env vars not supported in systemd resource control directives)
+- [Phase 07]: Scripts use CLAUDE_INSTANCE_NAME and --instance flag for instance targeting, defaulting to backward-compatible behavior
+- [Phase 07]: Migration creates env.v1-backup before removing flat env file; WorkingDirectory extracted from old claude.service when possible
 
 ### Key v2.0 Architecture Decisions
 
@@ -58,6 +60,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T03:50:54.197Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-03-23T03:55:43.749Z
+Stopped at: Completed 07-03-PLAN.md (checkpoint pending)
 Resume file: None

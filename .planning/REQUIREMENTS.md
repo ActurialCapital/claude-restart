@@ -13,7 +13,7 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 - [x] **INST-02**: Each instrument has isolated env file at `~/.config/claude-restart/<name>/env` with its own API key, CLAUDE_CONNECT, working directory
 - [x] **INST-03**: Each instrument has isolated restart file (no shared `~/.claude-restart`) via per-instance `CLAUDE_RESTART_FILE`
 - [x] **INST-04**: Each instrument has `MemoryMax` cgroup limit in systemd to prevent OOM from memory leaks
-- [ ] **INST-05**: When no instance name is provided, all scripts behave identically to v1.1 single-instance mode
+- [x] **INST-05**: When no instance name is provided, all scripts behave identically to v1.1 single-instance mode
 
 ### Instrument Lifecycle
 
@@ -28,8 +28,8 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 
 ### Wrapper Adaptation
 
-- [ ] **WRAP-05**: Wrapper reads `CLAUDE_INSTANCE_NAME` and passes it as `--name` flag to `claude remote-control`
-- [ ] **WRAP-06**: `claude-restart` accepts `--instance <name>` to restart a specific instrument
+- [x] **WRAP-05**: Wrapper reads `CLAUDE_INSTANCE_NAME` and passes it as `--name` flag to `claude remote-control`
+- [x] **WRAP-06**: `claude-restart` accepts `--instance <name>` to restart a specific instrument
 
 ### Autonomous Orchestra
 
@@ -76,9 +76,9 @@ Requirements for Multi-Instance Orchestration milestone. Each maps to roadmap ph
 | INST-02 | Phase 7 | Complete |
 | INST-03 | Phase 7 | Complete |
 | INST-04 | Phase 7 | Complete |
-| INST-05 | Phase 7 | Pending |
-| WRAP-05 | Phase 7 | Pending |
-| WRAP-06 | Phase 7 | Pending |
+| INST-05 | Phase 7 | Complete |
+| WRAP-05 | Phase 7 | Complete |
+| WRAP-06 | Phase 7 | Complete |
 | LIFE-01 | Phase 8 | Pending |
 | LIFE-02 | Phase 8 | Pending |
 | LIFE-03 | Phase 8 | Pending |
