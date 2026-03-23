@@ -1,20 +1,22 @@
 ---
-status: partial
+status: diagnosed
 phase: 09-autonomous-orchestra
 source: [09-VERIFICATION.md]
 started: 2026-03-23T17:50:00Z
-updated: 2026-03-23T23:35:00Z
+updated: 2026-03-23T23:55:00Z
 ---
 
 ## Current Test
 
-[awaiting human testing]
+[testing complete]
 
 ## Tests
 
 ### 1. Dynamic Instrument Discovery at Runtime
 expected: Deploy orchestra and add a new instrument while orchestra is running. On the next GSD loop cycle, orchestra discovers the new instrument via list_peers, spawns an assessment agent, and begins driving it.
-result: [pending]
+result: issue
+reported: "The error: Unknown argument: --dangerously-load-development-channels -- the remote-control subcommand doesn't accept the --dangerously-load-development-channels flag from CLAUDE_CHANNELS. The channel args are being placed after the subcommand. The command being built is: claude remote-control --permission-mode bypassPermissions --name orchestra --dangerously-load-development-channels server:claude-peers. --dangerously-load-development-channels is a top-level claude flag, not a remote-control flag. The wrapper puts channel_args after mode_args, so they end up as arguments to the subcommand. For remote-control mode, channel args need to go before the subcommand."
+severity: blocker
 
 ### 2. Instrument Removal Handling
 expected: Remove an instrument (stop its service) while orchestra is running. Orchestra stops sending messages to the removed instrument and does not error-loop on stale peer IDs.
@@ -26,16 +28,18 @@ notes: |
 
 ### 3. End-to-End VPS Deployment
 expected: Run `claude-service add-orchestra` on a VPS with a running default instance. Orchestra service starts, CLAUDE_CHANNELS is set to server:claude-peers, claude-peers MCP connects, list_peers returns at least one peer.
-result: [pending]
+result: blocked
+blocked_by: server
+reason: "Blocked — requires VPS with running instance; cannot test locally"
 
 ## Summary
 
 total: 3
 passed: 1
-issues: 0
-pending: 2
+issues: 1
+pending: 0
 skipped: 0
-blocked: 0
+blocked: 1
 
 ## Gaps
 
@@ -45,3 +49,16 @@ blocked: 0
   severity: blocker
   test: 1
   resolved_by: 09-03-PLAN.md
+
+- truth: "Orchestra discovers new instrument via list_peers and begins driving it"
+  status: failed
+  reason: "User reported: --dangerously-load-development-channels is a top-level claude flag, not a remote-control subcommand flag. Wrapper places channel_args after mode_args, so they land as arguments to the subcommand instead of before it."
+  severity: blocker
+  test: 1
+  root_cause: "bin/claude-wrapper lines 85, 106, 109 construct command as claude mode_args channel_args — but mode_args[0] is 'remote-control' subcommand, so channel_args end up as subcommand args. Need channel_args before mode_args."
+  artifacts:
+    - path: "bin/claude-wrapper"
+      issue: "Lines 85, 106, 109: channel_args placed after mode_args; mode_args[0] is subcommand 'remote-control'"
+  missing:
+    - "Swap to ${channel_args[@]} ${mode_args[@]} at all three call sites (lines 85, 106, 109)"
+  debug_session: ""
