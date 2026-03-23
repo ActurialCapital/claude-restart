@@ -1,0 +1,20 @@
+[Unit]
+Description=Claude Code AI Assistant (%i)
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/claude-restart/%i/env
+ExecStartPre=/bin/bash -c 'systemctl --user set-property claude@%i.service MemoryMax=${CLAUDE_MEMORY_MAX:-1G} 2>/dev/null || true'
+ExecStart=%h/.local/bin/claude-wrapper --dangerously-skip-permissions
+WorkingDirectory=${WORKING_DIRECTORY}
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target
