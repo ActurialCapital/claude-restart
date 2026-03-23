@@ -82,7 +82,7 @@ Plans:
 - [x] 09-01-PLAN.md — Infrastructure: channel flag support, env template updates, add-orchestra subcommand
 - [x] 09-02-PLAN.md — Orchestra CLAUDE.md: supervisor behavior specification with tools, workflow, and protocols
 - [x] 09-03-PLAN.md — Gap closure: fix remote-control permission flag and auto-confirm prompt in wrapper
-- [ ] 09-04-PLAN.md — Gap closure: fix channel flag argument ordering in wrapper
+- [x] 09-04-PLAN.md — Gap closure: fix channel flag argument ordering in wrapper
 
 ## Progress
 
