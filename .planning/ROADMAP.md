@@ -76,11 +76,11 @@ Plans:
   3. Orchestra can restart any instrument via `claude-restart --instance <name>` for context reset between work phases
   4. Orchestra detects instruments added or removed while it is running (reads manifest before each action)
   5. Orchestra routes messages to the correct instrument based on project context without manual configuration
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01-PLAN.md — Infrastructure: channel flag support, env template updates, add-orchestra subcommand
+- [ ] 09-02-PLAN.md — Orchestra CLAUDE.md: supervisor behavior specification with tools, workflow, and protocols
 
 ## Progress
 
@@ -96,4 +96,4 @@ Plans:
 | 6. Watchdog and Keep-Alive | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 7. Template Unit Foundation | v2.0 | 0/3 | Not started | - |
 | 8. Instrument Lifecycle | v2.0 | 1/2 | In progress | - |
-| 9. Autonomous Orchestra | v2.0 | 0/? | Not started | - |
+| 9. Autonomous Orchestra | v2.0 | 0/2 | Not started | - |
