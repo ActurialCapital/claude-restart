@@ -132,10 +132,25 @@ while true; do
         heartbeat_pid=$!
     elif [[ "${CLAUDE_CONNECT:-}" == "remote-control" ]]; then
         ensure_remote_dialog_seen
-        # remote-control is a server — it manages sessions via API connections,
-        # not stdin. Feed /dev/null so it doesn't wait for input.
-        claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" < /dev/null &
+        # remote-control inherits stdin to spawned sessions. /dev/null causes
+        # immediate EOF; sessions die with "--print mode needs input". Use a
+        # FIFO held open (no EOF) but never written to (no stale data).
+        HEARTBEAT_FIFO=$(mktemp -u /tmp/claude-heartbeat.XXXXXX)
+        mkfifo "$HEARTBEAT_FIFO"
+        claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
         child_pid=$!
+        # Hold FIFO write-end open so read-side never gets EOF
+        (
+            trap 'exec 3>&- 2>/dev/null; exit 0' TERM
+            exec 3>"$HEARTBEAT_FIFO"
+            # Block until claude exits — no writes needed
+            while kill -0 "$child_pid" 2>/dev/null; do
+                sleep 60 &
+                wait $! 2>/dev/null || break
+            done
+            exec 3>&- 2>/dev/null
+        ) &
+        heartbeat_pid=$!
     else
         claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" &
         child_pid=$!

@@ -358,16 +358,21 @@ CLAUDE_CONNECT=telegram CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>"$STDER
 stderr_output=$(cat "$STDERR_LOG" 2>/dev/null || echo "")
 assert_contains "heartbeat sent in telegram mode" "heartbeat sent" "$stderr_output"
 
-# --- Test 18: remote-control mode uses /dev/null stdin (no FIFO) ---
-echo "Test 18: remote-control mode uses /dev/null stdin (no heartbeat)"
+# --- Test 18: remote-control mode uses silent FIFO (open but no writes) ---
+echo "Test 18: remote-control FIFO stays open but sends no data"
 rm -f "$LOG" "$RESTART_FILE"
 STDIN_LOG="$TMPDIR/stdin18.log"
 rm -f "$STDIN_LOG"
+# Mock that reads stdin with timeout — should get nothing (FIFO open but silent)
 cat > "$MOCK_CLAUDE" << MOCKEOF
 #!/bin/bash
 echo "\$@" >> "$LOG"
-# stdin should be /dev/null — read should fail immediately
-read -t 1 line < /dev/stdin 2>/dev/null && echo "\$line" > "$STDIN_LOG" || true
+# FIFO is open (no EOF) but nothing written — read should timeout
+read -t 2 line < /dev/stdin 2>/dev/null && echo "\$line" > "$STDIN_LOG" || true
+# Drain to unblock FIFO
+cat > /dev/null &
+_drain_pid=\$!
+kill \$_drain_pid 2>/dev/null; wait \$_drain_pid 2>/dev/null || true
 exit 0
 MOCKEOF
 chmod +x "$MOCK_CLAUDE"
@@ -375,7 +380,7 @@ chmod +x "$MOCK_CLAUDE"
 CLAUDE_CONNECT=remote-control "$WRAPPER" 2>&1
 TOTAL=$((TOTAL + 1))
 if [[ ! -s "$STDIN_LOG" ]]; then
-    echo "  PASS: remote-control stdin is /dev/null (no data received)"
+    echo "  PASS: remote-control FIFO sends no data (stdin blocks, no EOF)"
     PASS=$((PASS + 1))
 else
     echo "  FAIL: remote-control unexpectedly received stdin: $(cat "$STDIN_LOG")"
@@ -407,21 +412,32 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-# --- Test 21: remote-control mode reads from /dev/null, no FIFO ---
-echo "Test 21: remote-control mode has no FIFO (stdin is /dev/null)"
+# --- Test 21: remote-control FIFO holder does not write heartbeats ---
+echo "Test 21: remote-control FIFO has no heartbeat writes"
 rm -f "$LOG" "$RESTART_FILE"
-# Verify no FIFO is created by checking that no heartbeat subshell runs
 STDERR_LOG="$TMPDIR/stderr21.log"
 rm -f "$STDERR_LOG"
-create_mock 0
+# Mock that sleeps 3s so heartbeat could fire if it existed
+cat > "$MOCK_CLAUDE" << 'MOCKEOF'
+#!/bin/bash
+cat > /dev/null &
+_drain_pid=$!
+echo "$@" >> LOGFILE
+sleep 3
+kill $_drain_pid 2>/dev/null; wait $_drain_pid 2>/dev/null || true
+exit 0
+MOCKEOF
+sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
+chmod +x "$MOCK_CLAUDE"
+
 CLAUDE_CONNECT=remote-control CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>"$STDERR_LOG" || true
 stderr_output=$(cat "$STDERR_LOG" 2>/dev/null || echo "")
 TOTAL=$((TOTAL + 1))
 if [[ "$stderr_output" != *"heartbeat sent"* ]]; then
-    echo "  PASS: no heartbeat in remote-control mode (uses /dev/null)"
+    echo "  PASS: no heartbeat writes in remote-control mode"
     PASS=$((PASS + 1))
 else
-    echo "  FAIL: heartbeat still running in remote-control mode"
+    echo "  FAIL: heartbeat still firing in remote-control mode"
     FAIL=$((FAIL + 1))
 fi
 
