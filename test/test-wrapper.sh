@@ -464,8 +464,8 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-# --- Test 23: ensure_remote_dialog_seen creates ~/.claude.json ---
-echo "Test 23: ensure_remote_dialog_seen creates config with remoteDialogSeen"
+# --- Test 23: ensure_remote_config creates ~/.claude.json ---
+echo "Test 23: ensure_remote_config creates config with remoteDialogSeen"
 rm -f "$LOG" "$RESTART_FILE"
 FAKE_HOME="$TMPDIR/fakehome"
 mkdir -p "$FAKE_HOME"
@@ -486,6 +486,14 @@ if grep -q "remoteDialogSeen" "$FAKE_HOME/.claude.json" 2>/dev/null; then
     PASS=$((PASS + 1))
 else
     echo "  FAIL: remoteDialogSeen not found in config"
+    FAIL=$((FAIL + 1))
+fi
+TOTAL=$((TOTAL + 1))
+if grep -q "hasTrustDialogAccepted" "$FAKE_HOME/.claude.json" 2>/dev/null; then
+    echo "  PASS: hasTrustDialogAccepted found in config"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: hasTrustDialogAccepted not found in config"
     FAIL=$((FAIL + 1))
 fi
 

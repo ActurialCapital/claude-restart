@@ -59,32 +59,51 @@ if [[ -n "${CLAUDE_CHANNELS:-}" && "${CLAUDE_CONNECT:-}" != "remote-control" ]];
     channel_args=("--dangerously-load-development-channels" "$CLAUDE_CHANNELS")
 fi
 
-# Ensure remoteDialogSeen is set in claude global config (bypasses "Enable Remote Control?" prompt)
-ensure_remote_dialog_seen() {
+# Ensure claude global config is ready for non-interactive remote-control startup:
+# - remoteDialogSeen: bypasses "Enable Remote Control?" prompt
+# - workspace trust: bypasses "Workspace not trusted" error for current directory
+ensure_remote_config() {
     local config_file="$HOME/.claude.json"
+    local cwd
+    cwd="$(pwd)"
     if [[ -f "$config_file" ]]; then
-        # Check if remoteDialogSeen is already true
-        if command -v jq &>/dev/null; then
-            if [[ "$(jq -r '.remoteDialogSeen // false' "$config_file" 2>/dev/null)" == "true" ]]; then
-                return 0
-            fi
-            # Set it using jq
-            local tmp
-            tmp=$(jq '.remoteDialogSeen = true' "$config_file") && echo "$tmp" > "$config_file"
-        elif command -v python3 &>/dev/null; then
+        if command -v python3 &>/dev/null; then
             python3 -c "
 import json, sys
 with open('$config_file') as f: d = json.load(f)
-if d.get('remoteDialogSeen') == True: sys.exit(0)
-d['remoteDialogSeen'] = True
-with open('$config_file', 'w') as f: json.dump(d, f, indent=2)
+changed = False
+if not d.get('remoteDialogSeen'):
+    d['remoteDialogSeen'] = True
+    changed = True
+projects = d.setdefault('projects', {})
+proj = projects.setdefault('$cwd', {})
+if not proj.get('hasTrustDialogAccepted'):
+    proj['hasTrustDialogAccepted'] = True
+    proj.setdefault('hasCompletedProjectOnboarding', True)
+    proj.setdefault('allowedTools', [])
+    changed = True
+if changed:
+    with open('$config_file', 'w') as f: json.dump(d, f, indent=2)
 "
+        elif command -v jq &>/dev/null; then
+            local tmp
+            tmp=$(jq --arg cwd "$cwd" '
+                .remoteDialogSeen = true |
+                .projects[$cwd] //= {} |
+                .projects[$cwd].hasTrustDialogAccepted = true |
+                .projects[$cwd].hasCompletedProjectOnboarding //= true |
+                .projects[$cwd].allowedTools //= []
+            ' "$config_file") && echo "$tmp" > "$config_file"
         else
-            echo "claude-wrapper: warning: cannot set remoteDialogSeen (install jq or python3)" >&2
+            echo "claude-wrapper: warning: cannot set remote config (install python3 or jq)" >&2
         fi
     else
         # Create minimal config
-        echo '{"remoteDialogSeen": true}' > "$config_file"
+        python3 -c "
+import json
+d = {'remoteDialogSeen': True, 'projects': {'$cwd': {'hasTrustDialogAccepted': True, 'hasCompletedProjectOnboarding': True, 'allowedTools': []}}}
+with open('$config_file', 'w') as f: json.dump(d, f, indent=2)
+" 2>/dev/null || echo '{"remoteDialogSeen": true}' > "$config_file"
     fi
 }
 
@@ -134,7 +153,7 @@ while true; do
         ) &
         heartbeat_pid=$!
     elif [[ "${CLAUDE_CONNECT:-}" == "remote-control" ]]; then
-        ensure_remote_dialog_seen
+        ensure_remote_config
         # remote-control inherits stdin to spawned sessions. /dev/null causes
         # immediate EOF; sessions die with "--print mode needs input". Use a
         # FIFO held open (no EOF) but never written to (no stale data).
