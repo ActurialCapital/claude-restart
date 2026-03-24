@@ -119,6 +119,8 @@ do_add_orchestra() {
     local env_dir="$CONFIG_DIR/$name"
     local work_dir="$HOME/instruments/$name"
     local template="$CONFIG_DIR/env.template"
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
     # Check for duplicate
     if [[ -d "$env_dir" ]]; then
@@ -141,8 +143,20 @@ do_add_orchestra() {
         exit 1
     fi
 
+    # Check orchestra CLAUDE.md source exists
+    local claude_md_src="$script_dir/../orchestra/CLAUDE.md"
+    if [[ ! -f "$claude_md_src" ]]; then
+        echo "Error: orchestra/CLAUDE.md not found at $claude_md_src" >&2
+        echo "The orchestra behavioral spec is required for add-orchestra." >&2
+        exit 1
+    fi
+
     # Create working directory (no git clone)
     mkdir -p "$work_dir"
+
+    # Deploy orchestra CLAUDE.md behavioral spec
+    cp "$claude_md_src" "$work_dir/CLAUDE.md"
+    echo "Deployed orchestra CLAUDE.md to $work_dir/CLAUDE.md"
 
     # Create env from template
     mkdir -p "$env_dir"
@@ -223,8 +237,6 @@ do_add_orchestra() {
     echo "  Watchdog: claude-watchdog@${name}.timer"
     echo "  Config: $env_dir/env"
     echo "  Working dir: $work_dir"
-    echo ""
-    echo "Next: place orchestra CLAUDE.md at $work_dir/CLAUDE.md"
 }
 
 do_remove() {

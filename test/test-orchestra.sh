@@ -64,11 +64,11 @@ else
     fail "usage missing add-orchestra"
 fi
 
-# Test 8: add-orchestra prints CLAUDE.md guidance
-if echo "$FUNC_BODY" | grep -q 'CLAUDE.md'; then
-    pass "do_add_orchestra mentions CLAUDE.md placement"
+# Test 8: add-orchestra deploys CLAUDE.md (not just mentions it)
+if echo "$FUNC_BODY" | grep -v '^[[:space:]]*#' | grep -q 'Deployed orchestra CLAUDE.md'; then
+    pass "do_add_orchestra deploys CLAUDE.md"
 else
-    fail "do_add_orchestra missing CLAUDE.md guidance"
+    fail "do_add_orchestra missing CLAUDE.md deployment"
 fi
 
 # Test 9: add-orchestra provisions .mcp.json
@@ -95,6 +95,20 @@ if echo "$FUNC_BODY" | grep -q 'mcp_json'; then
     fi
 else
     fail "do_add_orchestra missing .mcp.json provisioning entirely"
+fi
+
+# Test 12: add-orchestra copies orchestra/CLAUDE.md to working directory
+if echo "$FUNC_BODY" | grep -v '^[[:space:]]*#' | grep -q 'cp.*claude_md_src.*CLAUDE.md'; then
+    pass "do_add_orchestra copies CLAUDE.md to working directory"
+else
+    fail "do_add_orchestra missing CLAUDE.md copy"
+fi
+
+# Test 13: add-orchestra fails if orchestra/CLAUDE.md source is missing
+if echo "$FUNC_BODY" | grep -q 'claude_md_src' && echo "$FUNC_BODY" | grep -q 'exit 1'; then
+    pass "do_add_orchestra fails when source CLAUDE.md missing"
+else
+    fail "do_add_orchestra missing CLAUDE.md existence check"
 fi
 
 echo ""
