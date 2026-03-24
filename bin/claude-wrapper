@@ -51,8 +51,11 @@ if [[ "${CLAUDE_CONNECT:-}" == "remote-control" ]]; then
 fi
 
 # Channel support for claude-peers (per D-08, D-11)
+# Note: --dangerously-load-development-channels is not supported by the
+# remote-control subcommand. Skip channel_args for remote-control mode;
+# remote-control sessions load channels from project config instead.
 channel_args=()
-if [[ -n "${CLAUDE_CHANNELS:-}" ]]; then
+if [[ -n "${CLAUDE_CHANNELS:-}" && "${CLAUDE_CONNECT:-}" != "remote-control" ]]; then
     channel_args=("--dangerously-load-development-channels" "$CLAUDE_CHANNELS")
 fi
 

@@ -48,8 +48,8 @@ else
     fail "wrapper passes channel_args in only $INVOCATIONS invocations (expected >= 2)"
 fi
 
-# Test 6: channel_args only set when CLAUDE_CHANNELS is non-empty
-if grep -q 'if \[\[ -n "${CLAUDE_CHANNELS:-}" \]\]' "$WRAPPER"; then
+# Test 6: channel_args only set when CLAUDE_CHANNELS is non-empty (and not remote-control)
+if grep -q 'CLAUDE_CHANNELS:-}' "$WRAPPER" && grep -q 'channel_args=("--dangerously' "$WRAPPER"; then
     pass "wrapper guards channel_args on non-empty CLAUDE_CHANNELS"
 else
     fail "wrapper missing CLAUDE_CHANNELS guard"
