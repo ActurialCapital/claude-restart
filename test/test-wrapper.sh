@@ -358,14 +358,17 @@ CLAUDE_CONNECT=telegram CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>"$STDER
 stderr_output=$(cat "$STDERR_LOG" 2>/dev/null || echo "")
 assert_contains "heartbeat sent in telegram mode" "heartbeat sent" "$stderr_output"
 
-# --- Test 18: No heartbeat in remote-control mode ---
-echo "Test 18: No heartbeat in remote-control mode"
+# --- Test 18: Heartbeat starts in remote-control mode ---
+echo "Test 18: Heartbeat starts in remote-control mode"
 rm -f "$LOG" "$RESTART_FILE" "$STDERR_LOG"
-# Mock claude that sleeps 2 seconds then exits
+# Mock claude that sleeps 3 seconds then exits (drains stdin to prevent FIFO blocking)
 cat > "$MOCK_CLAUDE" << 'MOCKEOF'
 #!/bin/bash
+cat > /dev/null &
+_drain_pid=$!
 echo "$@" >> LOGFILE
-sleep 2
+sleep 3
+kill $_drain_pid 2>/dev/null; wait $_drain_pid 2>/dev/null || true
 exit 0
 MOCKEOF
 sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
@@ -373,14 +376,7 @@ chmod +x "$MOCK_CLAUDE"
 
 CLAUDE_CONNECT=remote-control CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>"$STDERR_LOG" || true
 stderr_output=$(cat "$STDERR_LOG" 2>/dev/null || echo "")
-TOTAL=$((TOTAL + 1))
-if [[ "$stderr_output" != *"heartbeat sent"* ]]; then
-    echo "  PASS: no heartbeat in remote-control mode"
-    PASS=$((PASS + 1))
-else
-    echo "  FAIL: no heartbeat in remote-control mode (unexpected heartbeat found in stderr)"
-    FAIL=$((FAIL + 1))
-fi
+assert_contains "heartbeat sent in remote-control mode" "heartbeat sent" "$stderr_output"
 
 # --- Test 19: remote-control mode includes --permission-mode bypassPermissions ---
 echo "Test 19: remote-control mode includes --permission-mode bypassPermissions"
@@ -416,6 +412,10 @@ cat > "$MOCK_CLAUDE" << MOCKEOF
 #!/bin/bash
 echo "\$@" >> "$LOG"
 head -1 > "$STDIN_LOG"
+# Drain remaining stdin to prevent FIFO blocking
+cat > /dev/null &
+_drain_pid=\$!
+kill \$_drain_pid 2>/dev/null; wait \$_drain_pid 2>/dev/null || true
 exit 0
 MOCKEOF
 chmod +x "$MOCK_CLAUDE"
