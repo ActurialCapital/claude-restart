@@ -31,7 +31,7 @@
 - [ ] **Phase 7: Template Unit Foundation** - Isolated multi-instance infrastructure with per-instance env, restart files, memory limits, and instance-aware wrapper/restart scripts
 - [ ] **Phase 8: Instrument Lifecycle** - Single-command add/remove/list with automatic watchdog pairing per instrument
 - [ ] **Phase 9: Autonomous Orchestra** - Supervisor session that dispatches work, restarts instruments, and dynamically discovers changes
-- [ ] **Phase 10: Orchestra MCP Provisioning** - Gap closure: auto-provision .mcp.json for claude-peers so orchestra doesn't depend on manual global config
+- [x] **Phase 10: Orchestra MCP Provisioning** - Gap closure: auto-provision .mcp.json for claude-peers so orchestra doesn't depend on manual global config (completed 2026-03-24)
 
 ## Phase Details
 
@@ -115,4 +115,4 @@ Plans:
 | 7. Template Unit Foundation | v2.0 | 0/3 | Not started | - |
 | 8. Instrument Lifecycle | v2.0 | 1/2 | In progress | - |
 | 9. Autonomous Orchestra | v2.0 | 5/6 | In progress | - |
-| 10. Orchestra MCP Provisioning | v2.0 | 0/1 | Planned    |  |
+| 10. Orchestra MCP Provisioning | v2.0 | 0/1 | Complete    | 2026-03-24 |
