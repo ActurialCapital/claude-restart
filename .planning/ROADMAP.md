@@ -84,7 +84,7 @@ Plans:
 - [x] 09-03-PLAN.md — Gap closure: fix remote-control permission flag and auto-confirm prompt in wrapper
 - [x] 09-04-PLAN.md — Gap closure: fix channel flag argument ordering in wrapper
 - [x] 09-05-PLAN.md — Gap closure: FIFO-based stdin for remote-control mode (persistent session)
-- [ ] 09-06-PLAN.md — Gap closure: pre-set remoteDialogSeen to bypass confirmation prompt
+- [x] 09-06-PLAN.md — Gap closure: pre-set remoteDialogSeen to bypass confirmation prompt
 
 ## Progress
 
