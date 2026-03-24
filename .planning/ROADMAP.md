@@ -95,7 +95,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `add-orchestra` creates `.mcp.json` in the orchestra working directory with claude-peers MCP server config
   2. Orchestra can discover and message instruments without any manual MCP configuration
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] 10-01-PLAN.md — Auto-provision .mcp.json in add-orchestra subcommand
