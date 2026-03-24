@@ -113,7 +113,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 11-01-PLAN.md — Auto-deploy CLAUDE.md in add-orchestra + fix stale ROADMAP documentation
+- [x] 11-01-PLAN.md — Auto-deploy CLAUDE.md in add-orchestra + fix stale ROADMAP documentation
 
 ## Progress
 
@@ -131,4 +131,4 @@ Plans:
 | 8. Instrument Lifecycle | v2.0 | 2/2 | Complete | 2026-03-23 |
 | 9. Autonomous Orchestra | v2.0 | 6/6 | Complete | 2026-03-24 |
 | 10. Orchestra MCP Provisioning | v2.0 | 1/1 | Complete | 2026-03-24 |
-| 11. Orchestra CLAUDE.md Auto-deploy | v2.0 | 0/1 | Not started | - |
+| 11. Orchestra CLAUDE.md Auto-deploy | v2.0 | 1/1 | Complete | 2026-03-24 |
