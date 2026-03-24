@@ -60,7 +60,7 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 
 **Goal:** Run multiple isolated Claude instruments on a VPS with easy lifecycle management and an optional autonomous orchestra that supervises, dispatches, and controls instruments across separate projects.
 
-**Status:** All 10 phases complete (Phase 10: gap closure). 2 human verification items pending (runtime VPS testing).
+**Status:** All 11 phases complete. v2.0 milestone fully delivered. 2 human verification items pending (runtime VPS testing).
 
 **Delivered:**
 - systemd template units for multi-instance instrument management
@@ -70,6 +70,7 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 - Orchestra uses claude-restart for instrument context reset between phases
 - All sessions use remote-control mode with correct permission flags
 - Orchestra auto-provisioned with claude-peers MCP config via `.mcp.json` (Phase 10 gap closure)
+- Orchestra CLAUDE.md auto-deployed during add-orchestra with fail-fast guard (Phase 11 gap closure)
 
 ## Context
 
@@ -123,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-24 after Phase 10 completion*
+*Last updated: 2026-03-24 after Phase 11 completion*
