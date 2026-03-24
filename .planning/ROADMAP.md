@@ -83,7 +83,7 @@ Plans:
 - [x] 09-02-PLAN.md — Orchestra CLAUDE.md: supervisor behavior specification with tools, workflow, and protocols
 - [x] 09-03-PLAN.md — Gap closure: fix remote-control permission flag and auto-confirm prompt in wrapper
 - [x] 09-04-PLAN.md — Gap closure: fix channel flag argument ordering in wrapper
-- [ ] 09-05-PLAN.md — Gap closure: FIFO-based stdin for remote-control mode (persistent session)
+- [x] 09-05-PLAN.md — Gap closure: FIFO-based stdin for remote-control mode (persistent session)
 
 ## Progress
 
