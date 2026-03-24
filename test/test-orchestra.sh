@@ -71,6 +71,32 @@ else
     fail "do_add_orchestra missing CLAUDE.md guidance"
 fi
 
+# Test 9: add-orchestra provisions .mcp.json
+if echo "$FUNC_BODY" | grep -q 'mcp_json'; then
+    pass "do_add_orchestra provisions .mcp.json"
+else
+    fail "do_add_orchestra missing .mcp.json provisioning"
+fi
+
+# Test 10: add-orchestra reads mcpServers from global config
+if echo "$FUNC_BODY" | grep -q 'mcpServers'; then
+    pass "do_add_orchestra reads mcpServers from global config"
+else
+    fail "do_add_orchestra missing mcpServers extraction"
+fi
+
+# Test 11: add-orchestra handles existing .mcp.json (merge case)
+if echo "$FUNC_BODY" | grep -q 'mcp_json'; then
+    # Check for conditional logic around existing file
+    if echo "$FUNC_BODY" | grep -q '\-f.*mcp_json\|mcp_json.*-f'; then
+        pass "do_add_orchestra handles existing .mcp.json merge"
+    else
+        fail "do_add_orchestra missing .mcp.json merge handling"
+    fi
+else
+    fail "do_add_orchestra missing .mcp.json provisioning entirely"
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1
