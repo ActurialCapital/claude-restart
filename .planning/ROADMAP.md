@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 MVP** -- Phases 1-3 (shipped 2026-03-21)
 - ✅ **v1.1 VPS Reliability** -- Phases 4-6 (shipped 2026-03-22)
-- [ ] **v2.0 Multi-Instance Orchestration** -- Phases 7-9 (in progress)
+- [ ] **v2.0 Multi-Instance Orchestration** -- Phases 7-11 (in progress)
 
 ## Phases
 
@@ -28,10 +28,11 @@
 
 ### v2.0 Multi-Instance Orchestration
 
-- [ ] **Phase 7: Template Unit Foundation** - Isolated multi-instance infrastructure with per-instance env, restart files, memory limits, and instance-aware wrapper/restart scripts
-- [ ] **Phase 8: Instrument Lifecycle** - Single-command add/remove/list with automatic watchdog pairing per instrument
-- [ ] **Phase 9: Autonomous Orchestra** - Supervisor session that dispatches work, restarts instruments, and dynamically discovers changes
+- [x] **Phase 7: Template Unit Foundation** - Isolated multi-instance infrastructure with per-instance env, restart files, memory limits, and instance-aware wrapper/restart scripts (completed)
+- [x] **Phase 8: Instrument Lifecycle** - Single-command add/remove/list with automatic watchdog pairing per instrument (completed)
+- [x] **Phase 9: Autonomous Orchestra** - Supervisor session that dispatches work, restarts instruments, and dynamically discovers changes (completed)
 - [x] **Phase 10: Orchestra MCP Provisioning** - Gap closure: auto-provision .mcp.json for claude-peers so orchestra doesn't depend on manual global config (completed 2026-03-24)
+- [ ] **Phase 11: Orchestra CLAUDE.md Auto-deploy** - Gap closure: auto-deploy orchestra/CLAUDE.md during add-orchestra + fix stale ROADMAP.md documentation
 
 ## Phase Details
 
@@ -98,11 +99,25 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 10-01-PLAN.md — Auto-provision .mcp.json in add-orchestra subcommand
+- [x] 10-01-PLAN.md — Auto-provision .mcp.json in add-orchestra subcommand
+
+### Phase 11: Orchestra CLAUDE.md Auto-deploy
+**Goal**: `add-orchestra` automatically copies `orchestra/CLAUDE.md` into the orchestra working directory so the orchestra session starts with its behavioral spec
+**Depends on**: Phase 9
+**Requirements**: ORCH-01 (gap closure — already satisfied, this fixes the deployment path)
+**Gap Closure**: Closes FINDING-01 from v2.0 audit + fixes stale ROADMAP.md documentation
+**Success Criteria** (what must be TRUE):
+  1. `add-orchestra` copies `orchestra/CLAUDE.md` to the orchestra working directory automatically
+  2. "Add Orchestra E2E" flow completes without manual CLAUDE.md copy step
+  3. ROADMAP.md progress table and plan checkboxes are accurate
+**Plans**: 0 plans (pending)
+
+Plans:
+- [ ] 11-01-PLAN.md — Auto-deploy CLAUDE.md in add-orchestra + ROADMAP cleanup
 
 ## Progress
 
-**Execution Order:** Phase 7 -> Phase 8 -> Phase 9
+**Execution Order:** Phase 7 -> Phase 8 -> Phase 9 -> Phase 10 -> Phase 11
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -112,7 +127,8 @@ Plans:
 | 4. Wrapper Hardening | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 5. systemd Service | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 6. Watchdog and Keep-Alive | v1.1 | 2/2 | Complete | 2026-03-22 |
-| 7. Template Unit Foundation | v2.0 | 0/3 | Not started | - |
-| 8. Instrument Lifecycle | v2.0 | 1/2 | In progress | - |
-| 9. Autonomous Orchestra | v2.0 | 5/6 | In progress | - |
-| 10. Orchestra MCP Provisioning | v2.0 | 0/1 | Complete    | 2026-03-24 |
+| 7. Template Unit Foundation | v2.0 | 3/3 | Complete | 2026-03-23 |
+| 8. Instrument Lifecycle | v2.0 | 2/2 | Complete | 2026-03-23 |
+| 9. Autonomous Orchestra | v2.0 | 6/6 | Complete | 2026-03-24 |
+| 10. Orchestra MCP Provisioning | v2.0 | 1/1 | Complete | 2026-03-24 |
+| 11. Orchestra CLAUDE.md Auto-deploy | v2.0 | 0/1 | Not started | - |
