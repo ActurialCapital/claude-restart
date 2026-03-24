@@ -31,6 +31,7 @@
 - [ ] **Phase 7: Template Unit Foundation** - Isolated multi-instance infrastructure with per-instance env, restart files, memory limits, and instance-aware wrapper/restart scripts
 - [ ] **Phase 8: Instrument Lifecycle** - Single-command add/remove/list with automatic watchdog pairing per instrument
 - [ ] **Phase 9: Autonomous Orchestra** - Supervisor session that dispatches work, restarts instruments, and dynamically discovers changes
+- [ ] **Phase 10: Orchestra MCP Provisioning** - Gap closure: auto-provision .mcp.json for claude-peers so orchestra doesn't depend on manual global config
 
 ## Phase Details
 
@@ -64,7 +65,7 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md — Watchdog template units and install.sh migration
-- [ ] 08-02-PLAN.md — claude-service add/remove/list subcommands and lifecycle tests
+- [x] 08-02-PLAN.md — claude-service add/remove/list subcommands and lifecycle tests
 
 ### Phase 9: Autonomous Orchestra
 **Goal**: An optional autonomous Claude session supervises all instruments -- dispatching work, resetting context, spawning research agents, and adapting to fleet changes
@@ -86,6 +87,19 @@ Plans:
 - [x] 09-05-PLAN.md — Gap closure: FIFO-based stdin for remote-control mode (persistent session)
 - [x] 09-06-PLAN.md — Gap closure: pre-set remoteDialogSeen to bypass confirmation prompt
 
+### Phase 10: Orchestra MCP Provisioning
+**Goal**: `add-orchestra` automatically provisions `.mcp.json` with claude-peers config so orchestra peer discovery works without manual global `~/.claude.json` setup
+**Depends on**: Phase 9
+**Requirements**: ORCH-04, ORCH-05 (gap closure — already satisfied via global config, this makes provisioning automatic)
+**Gap Closure**: Closes integration gap from v2.0 audit
+**Success Criteria** (what must be TRUE):
+  1. `add-orchestra` creates `.mcp.json` in the orchestra working directory with claude-peers MCP server config
+  2. Orchestra can discover and message instruments without any manual MCP configuration
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01-PLAN.md — Auto-provision .mcp.json in add-orchestra subcommand
+
 ## Progress
 
 **Execution Order:** Phase 7 -> Phase 8 -> Phase 9
@@ -101,3 +115,4 @@ Plans:
 | 7. Template Unit Foundation | v2.0 | 0/3 | Not started | - |
 | 8. Instrument Lifecycle | v2.0 | 1/2 | In progress | - |
 | 9. Autonomous Orchestra | v2.0 | 5/6 | In progress | - |
+| 10. Orchestra MCP Provisioning | v2.0 | 0/1 | Not started | - |
