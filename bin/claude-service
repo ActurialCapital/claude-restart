@@ -170,6 +170,17 @@ do_add_orchestra() {
 
     chmod 600 "$env_dir/env"
 
+    # Pre-set remoteDialogSeen for non-interactive remote-control startup
+    local claude_config="$HOME/.claude.json"
+    if [[ -f "$claude_config" ]] && command -v jq &>/dev/null; then
+        local tmp
+        tmp=$(jq '.remoteDialogSeen = true' "$claude_config") && echo "$tmp" > "$claude_config"
+        echo "Set remoteDialogSeen=true in $claude_config"
+    elif [[ ! -f "$claude_config" ]]; then
+        echo '{"remoteDialogSeen": true}' > "$claude_config"
+        echo "Created $claude_config with remoteDialogSeen=true"
+    fi
+
     # Enable systemd units
     systemctl --user daemon-reload
     systemctl --user enable --now "claude@${name}.service"

@@ -403,15 +403,16 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-# --- Test 21: remote-control mode pipes y to stdin for auto-confirm ---
-echo "Test 21: remote-control mode auto-confirms via stdin"
+# --- Test 21: remote-control mode does NOT pipe y to stdin (remoteDialogSeen pre-set instead) ---
+echo "Test 21: remote-control mode does not pipe y to stdin"
 rm -f "$LOG" "$RESTART_FILE"
 STDIN_LOG="$TMPDIR/stdin.log"
 rm -f "$STDIN_LOG"
 cat > "$MOCK_CLAUDE" << MOCKEOF
 #!/bin/bash
 echo "\$@" >> "$LOG"
-head -1 > "$STDIN_LOG"
+# Read first line from stdin with timeout -- should NOT be "y" anymore
+read -t 2 line < /dev/stdin 2>/dev/null && echo "\$line" > "$STDIN_LOG" || true
 # Drain remaining stdin to prevent FIFO blocking
 cat > /dev/null &
 _drain_pid=\$!
@@ -420,9 +421,16 @@ exit 0
 MOCKEOF
 chmod +x "$MOCK_CLAUDE"
 
-CLAUDE_CONNECT=remote-control "$WRAPPER" 2>&1
+CLAUDE_CONNECT=remote-control CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>&1
 stdin_content=$(cat "$STDIN_LOG" 2>/dev/null || echo "EMPTY")
-assert_eq "stdin receives y for auto-confirm" "y" "$stdin_content"
+TOTAL=$((TOTAL + 1))
+if [[ "$stdin_content" != "y" ]]; then
+    echo "  PASS: stdin does not receive y (got: '$stdin_content')"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: stdin still receives y for auto-confirm"
+    FAIL=$((FAIL + 1))
+fi
 
 # --- Test 22: interactive mode does NOT pipe y to stdin ---
 echo "Test 22: interactive mode does not pipe stdin"
@@ -444,6 +452,31 @@ if [[ ! -s "$STDIN_LOG" ]]; then
     PASS=$((PASS + 1))
 else
     echo "  FAIL: interactive mode unexpectedly received stdin: $(cat "$STDIN_LOG")"
+    FAIL=$((FAIL + 1))
+fi
+
+# --- Test 23: ensure_remote_dialog_seen creates ~/.claude.json ---
+echo "Test 23: ensure_remote_dialog_seen creates config with remoteDialogSeen"
+rm -f "$LOG" "$RESTART_FILE"
+FAKE_HOME="$TMPDIR/fakehome"
+mkdir -p "$FAKE_HOME"
+rm -f "$FAKE_HOME/.claude.json"
+create_mock 0
+HOME="$FAKE_HOME" CLAUDE_CONNECT=remote-control CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>&1 || true
+TOTAL=$((TOTAL + 1))
+if [[ -f "$FAKE_HOME/.claude.json" ]]; then
+    echo "  PASS: ~/.claude.json created"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: ~/.claude.json not created"
+    FAIL=$((FAIL + 1))
+fi
+TOTAL=$((TOTAL + 1))
+if grep -q "remoteDialogSeen" "$FAKE_HOME/.claude.json" 2>/dev/null; then
+    echo "  PASS: remoteDialogSeen found in config"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: remoteDialogSeen not found in config"
     FAIL=$((FAIL + 1))
 fi
 

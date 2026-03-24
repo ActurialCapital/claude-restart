@@ -141,6 +141,22 @@ do_install_linux() {
         echo "Created env file at $ENV_FILE"
     fi
 
+    # Pre-set remoteDialogSeen in claude global config for non-interactive remote-control startup
+    # Read CLAUDE_CONNECT from the env file (works for both fresh installs and re-runs)
+    EFFECTIVE_CONN_MODE=$(grep '^CLAUDE_CONNECT=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "")
+    if [[ "$EFFECTIVE_CONN_MODE" == "remote-control" ]]; then
+        CLAUDE_CONFIG="$HOME/.claude.json"
+        if [[ -f "$CLAUDE_CONFIG" ]] && command -v jq &>/dev/null; then
+            tmp=$(jq '.remoteDialogSeen = true' "$CLAUDE_CONFIG") && echo "$tmp" > "$CLAUDE_CONFIG"
+            echo "Set remoteDialogSeen=true in $CLAUDE_CONFIG"
+        elif [[ ! -f "$CLAUDE_CONFIG" ]]; then
+            echo '{"remoteDialogSeen": true}' > "$CLAUDE_CONFIG"
+            echo "Created $CLAUDE_CONFIG with remoteDialogSeen=true"
+        else
+            echo "Warning: install jq to auto-set remoteDialogSeen (or run 'claude' interactively once)"
+        fi
+    fi
+
     # 4. Install systemd template unit file (per D-05)
     mkdir -p "$SYSTEMD_USER_DIR"
     cp "$SCRIPT_DIR/../systemd/claude@.service" "$SYSTEMD_USER_DIR/claude@.service"

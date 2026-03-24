@@ -56,6 +56,35 @@ if [[ -n "${CLAUDE_CHANNELS:-}" ]]; then
     channel_args=("--dangerously-load-development-channels" "$CLAUDE_CHANNELS")
 fi
 
+# Ensure remoteDialogSeen is set in claude global config (bypasses "Enable Remote Control?" prompt)
+ensure_remote_dialog_seen() {
+    local config_file="$HOME/.claude.json"
+    if [[ -f "$config_file" ]]; then
+        # Check if remoteDialogSeen is already true
+        if command -v jq &>/dev/null; then
+            if [[ "$(jq -r '.remoteDialogSeen // false' "$config_file" 2>/dev/null)" == "true" ]]; then
+                return 0
+            fi
+            # Set it using jq
+            local tmp
+            tmp=$(jq '.remoteDialogSeen = true' "$config_file") && echo "$tmp" > "$config_file"
+        elif command -v python3 &>/dev/null; then
+            python3 -c "
+import json, sys
+with open('$config_file') as f: d = json.load(f)
+if d.get('remoteDialogSeen') == True: sys.exit(0)
+d['remoteDialogSeen'] = True
+with open('$config_file', 'w') as f: json.dump(d, f, indent=2)
+"
+        else
+            echo "claude-wrapper: warning: cannot set remoteDialogSeen (install jq or python3)" >&2
+        fi
+    else
+        # Create minimal config
+        echo '{"remoteDialogSeen": true}' > "$config_file"
+    fi
+}
+
 # Track child process for signal forwarding
 child_pid=""
 heartbeat_pid=""
@@ -102,6 +131,7 @@ while true; do
         ) &
         heartbeat_pid=$!
     elif [[ "${CLAUDE_CONNECT:-}" == "remote-control" ]]; then
+        ensure_remote_dialog_seen
         HEARTBEAT_FIFO=$(mktemp -u /tmp/claude-heartbeat.XXXXXX)
         mkfifo "$HEARTBEAT_FIFO"
         claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
@@ -110,8 +140,6 @@ while true; do
             _hb_sleep_pid=""
             trap 'kill "$_hb_sleep_pid" 2>/dev/null; exec 3>&- 2>/dev/null; exit 0' TERM
             exec 3>"$HEARTBEAT_FIFO"
-            # Auto-confirm "Enable Remote Control?" prompt
-            echo "y" >&3
             while kill -0 "$child_pid" 2>/dev/null; do
                 sleep "$HEARTBEAT_INTERVAL" &
                 _hb_sleep_pid=$!
