@@ -32,7 +32,7 @@
 - [x] **Phase 8: Instrument Lifecycle** - Single-command add/remove/list with automatic watchdog pairing per instrument (completed)
 - [x] **Phase 9: Autonomous Orchestra** - Supervisor session that dispatches work, restarts instruments, and dynamically discovers changes (completed)
 - [x] **Phase 10: Orchestra MCP Provisioning** - Gap closure: auto-provision .mcp.json for claude-peers so orchestra doesn't depend on manual global config (completed 2026-03-24)
-- [ ] **Phase 11: Orchestra CLAUDE.md Auto-deploy** - Gap closure: auto-deploy orchestra/CLAUDE.md during add-orchestra + fix stale ROADMAP.md documentation
+- [x] **Phase 11: Orchestra CLAUDE.md Auto-deploy** - Gap closure: auto-deploy orchestra/CLAUDE.md during add-orchestra + fix stale ROADMAP.md documentation (completed 2026-03-24)
 
 ## Phase Details
 
@@ -131,4 +131,4 @@ Plans:
 | 8. Instrument Lifecycle | v2.0 | 2/2 | Complete | 2026-03-23 |
 | 9. Autonomous Orchestra | v2.0 | 6/6 | Complete | 2026-03-24 |
 | 10. Orchestra MCP Provisioning | v2.0 | 1/1 | Complete | 2026-03-24 |
-| 11. Orchestra CLAUDE.md Auto-deploy | v2.0 | 1/1 | Complete | 2026-03-24 |
+| 11. Orchestra CLAUDE.md Auto-deploy | v2.0 | 1/1 | Complete    | 2026-03-24 |
