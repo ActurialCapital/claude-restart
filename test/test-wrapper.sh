@@ -358,25 +358,29 @@ CLAUDE_CONNECT=telegram CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>"$STDER
 stderr_output=$(cat "$STDERR_LOG" 2>/dev/null || echo "")
 assert_contains "heartbeat sent in telegram mode" "heartbeat sent" "$stderr_output"
 
-# --- Test 18: Heartbeat starts in remote-control mode ---
-echo "Test 18: Heartbeat starts in remote-control mode"
-rm -f "$LOG" "$RESTART_FILE" "$STDERR_LOG"
-# Mock claude that sleeps 3 seconds then exits (drains stdin to prevent FIFO blocking)
-cat > "$MOCK_CLAUDE" << 'MOCKEOF'
+# --- Test 18: remote-control mode uses /dev/null stdin (no FIFO) ---
+echo "Test 18: remote-control mode uses /dev/null stdin (no heartbeat)"
+rm -f "$LOG" "$RESTART_FILE"
+STDIN_LOG="$TMPDIR/stdin18.log"
+rm -f "$STDIN_LOG"
+cat > "$MOCK_CLAUDE" << MOCKEOF
 #!/bin/bash
-cat > /dev/null &
-_drain_pid=$!
-echo "$@" >> LOGFILE
-sleep 3
-kill $_drain_pid 2>/dev/null; wait $_drain_pid 2>/dev/null || true
+echo "\$@" >> "$LOG"
+# stdin should be /dev/null — read should fail immediately
+read -t 1 line < /dev/stdin 2>/dev/null && echo "\$line" > "$STDIN_LOG" || true
 exit 0
 MOCKEOF
-sed -i '' "s|LOGFILE|$LOG|g" "$MOCK_CLAUDE"
 chmod +x "$MOCK_CLAUDE"
 
-CLAUDE_CONNECT=remote-control CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>"$STDERR_LOG" || true
-stderr_output=$(cat "$STDERR_LOG" 2>/dev/null || echo "")
-assert_contains "heartbeat sent in remote-control mode" "heartbeat sent" "$stderr_output"
+CLAUDE_CONNECT=remote-control "$WRAPPER" 2>&1
+TOTAL=$((TOTAL + 1))
+if [[ ! -s "$STDIN_LOG" ]]; then
+    echo "  PASS: remote-control stdin is /dev/null (no data received)"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: remote-control unexpectedly received stdin: $(cat "$STDIN_LOG")"
+    FAIL=$((FAIL + 1))
+fi
 
 # --- Test 19: remote-control mode includes --permission-mode bypassPermissions ---
 echo "Test 19: remote-control mode includes --permission-mode bypassPermissions"
@@ -403,32 +407,21 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-# --- Test 21: remote-control mode does NOT pipe y to stdin (remoteDialogSeen pre-set instead) ---
-echo "Test 21: remote-control mode does not pipe y to stdin"
+# --- Test 21: remote-control mode reads from /dev/null, no FIFO ---
+echo "Test 21: remote-control mode has no FIFO (stdin is /dev/null)"
 rm -f "$LOG" "$RESTART_FILE"
-STDIN_LOG="$TMPDIR/stdin.log"
-rm -f "$STDIN_LOG"
-cat > "$MOCK_CLAUDE" << MOCKEOF
-#!/bin/bash
-echo "\$@" >> "$LOG"
-# Read first line from stdin with timeout -- should NOT be "y" anymore
-read -t 2 line < /dev/stdin 2>/dev/null && echo "\$line" > "$STDIN_LOG" || true
-# Drain remaining stdin to prevent FIFO blocking
-cat > /dev/null &
-_drain_pid=\$!
-kill \$_drain_pid 2>/dev/null; wait \$_drain_pid 2>/dev/null || true
-exit 0
-MOCKEOF
-chmod +x "$MOCK_CLAUDE"
-
-CLAUDE_CONNECT=remote-control CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>&1
-stdin_content=$(cat "$STDIN_LOG" 2>/dev/null || echo "EMPTY")
+# Verify no FIFO is created by checking that no heartbeat subshell runs
+STDERR_LOG="$TMPDIR/stderr21.log"
+rm -f "$STDERR_LOG"
+create_mock 0
+CLAUDE_CONNECT=remote-control CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>"$STDERR_LOG" || true
+stderr_output=$(cat "$STDERR_LOG" 2>/dev/null || echo "")
 TOTAL=$((TOTAL + 1))
-if [[ "$stdin_content" != "y" ]]; then
-    echo "  PASS: stdin does not receive y (got: '$stdin_content')"
+if [[ "$stderr_output" != *"heartbeat sent"* ]]; then
+    echo "  PASS: no heartbeat in remote-control mode (uses /dev/null)"
     PASS=$((PASS + 1))
 else
-    echo "  FAIL: stdin still receives y for auto-confirm"
+    echo "  FAIL: heartbeat still running in remote-control mode"
     FAIL=$((FAIL + 1))
 fi
 

@@ -132,25 +132,10 @@ while true; do
         heartbeat_pid=$!
     elif [[ "${CLAUDE_CONNECT:-}" == "remote-control" ]]; then
         ensure_remote_dialog_seen
-        HEARTBEAT_FIFO=$(mktemp -u /tmp/claude-heartbeat.XXXXXX)
-        mkfifo "$HEARTBEAT_FIFO"
-        claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
+        # remote-control is a server — it manages sessions via API connections,
+        # not stdin. Feed /dev/null so it doesn't wait for input.
+        claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" < /dev/null &
         child_pid=$!
-        (
-            _hb_sleep_pid=""
-            trap 'kill "$_hb_sleep_pid" 2>/dev/null; exec 3>&- 2>/dev/null; exit 0' TERM
-            exec 3>"$HEARTBEAT_FIFO"
-            while kill -0 "$child_pid" 2>/dev/null; do
-                sleep "$HEARTBEAT_INTERVAL" &
-                _hb_sleep_pid=$!
-                wait $_hb_sleep_pid 2>/dev/null || break
-                _hb_sleep_pid=""
-                echo "" >&3 2>/dev/null || break
-                echo "claude-wrapper: heartbeat sent $(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
-            done
-            exec 3>&- 2>/dev/null
-        ) &
-        heartbeat_pid=$!
     else
         claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" &
         child_pid=$!
