@@ -46,7 +46,7 @@
   3. Each instrument is cgroup-limited by MemoryMax so one runaway instance cannot OOM the VPS
   4. Running scripts without an instance name behaves identically to v1.1 single-instance mode (backward compatibility)
   5. The wrapper passes `--name <instance>` to `claude remote-control` and `claude-restart --instance <name>` targets the correct instrument
-**Plans**: 5 plans
+**Plans**: 3 plans
 
 Plans:
 - [x] 07-01-PLAN.md — Create systemd template unit and updated env template
@@ -110,10 +110,10 @@ Plans:
   1. `add-orchestra` copies `orchestra/CLAUDE.md` to the orchestra working directory automatically
   2. "Add Orchestra E2E" flow completes without manual CLAUDE.md copy step
   3. ROADMAP.md progress table and plan checkboxes are accurate
-**Plans**: 0 plans (pending)
+**Plans**: 1 plan
 
 Plans:
-- [ ] 11-01-PLAN.md — Auto-deploy CLAUDE.md in add-orchestra + ROADMAP cleanup
+- [ ] 11-01-PLAN.md — Auto-deploy CLAUDE.md in add-orchestra + fix stale ROADMAP documentation
 
 ## Progress
 
