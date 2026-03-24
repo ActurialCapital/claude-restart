@@ -115,4 +115,4 @@ Plans:
 | 7. Template Unit Foundation | v2.0 | 0/3 | Not started | - |
 | 8. Instrument Lifecycle | v2.0 | 1/2 | In progress | - |
 | 9. Autonomous Orchestra | v2.0 | 5/6 | In progress | - |
-| 10. Orchestra MCP Provisioning | v2.0 | 0/1 | Not started | - |
+| 10. Orchestra MCP Provisioning | v2.0 | 0/1 | Planned    |  |

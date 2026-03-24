@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Instance Orchestration
-status: Milestone complete
-stopped_at: Phase 10 context gathered
-last_updated: "2026-03-24T12:19:08.017Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-03-24T13:05:49.807Z"
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 11
+  total_plans: 12
   completed_plans: 11
 ---
 
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
-**Current focus:** Phase 09 — autonomous-orchestra
+**Current focus:** Phase 10 — orchestra-mcp-provisioning
 
 ## Current Position
 
-Phase: 09
-Plan: Not started
+Phase: 10 (orchestra-mcp-provisioning) — EXECUTING
+Plan: 1 of 1
 
 ## Accumulated Context
 
@@ -43,6 +43,7 @@ Full decision history archived in milestones/v1.0-ROADMAP.md and milestones/v1.1
 - [Phase 09]: Orchestra CLAUDE.md is pure prompt engineering -- the CLAUDE.md IS the orchestra supervisor
 - [Phase 09]: Permission flag baked into mode_args for remote-control; defensive filtering of --dangerously-skip-permissions
 - [Phase 09]: Remote-control uses identical FIFO pattern as telegram, with y written before heartbeat loop
+- [Phase 10]: claude_config variable refactored to single declaration shared by .mcp.json and remoteDialogSeen blocks
 
 ### Key v2.0 Architecture Decisions
 
@@ -67,6 +68,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-24T12:19:08.013Z
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-orchestra-mcp-provisioning/10-CONTEXT.md
+Last session: 2026-03-24T13:05:49.805Z
+Stopped at: Completed 10-01-PLAN.md
+Resume file: None
