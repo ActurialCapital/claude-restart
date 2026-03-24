@@ -228,7 +228,7 @@ rm -f "$LOG" "$RESTART_FILE"
 create_mock 0
 CLAUDE_CONNECT=remote-control "$WRAPPER" --verbose 2>&1
 logged_args=$(cat "$LOG")
-assert_eq "remote-control mode args" "remote-control --permission-mode bypassPermissions --verbose" "$logged_args"
+assert_eq "remote-control mode args" "remote-control --permission-mode bypassPermissions --no-create-session-in-dir --verbose" "$logged_args"
 
 # --- Test 10: CLAUDE_CONNECT=telegram ---
 echo "Test 10: CLAUDE_CONNECT=telegram prepends channel args"
@@ -263,7 +263,7 @@ rm -f "$LOG" "$RESTART_FILE"
 create_mock 0
 CLAUDE_CONNECT=remote-control "$WRAPPER" --verbose --model opus 2>&1
 logged_args=$(cat "$LOG")
-assert_eq "mode + extra args" "remote-control --permission-mode bypassPermissions --verbose --model opus" "$logged_args"
+assert_eq "mode + extra args" "remote-control --permission-mode bypassPermissions --no-create-session-in-dir --verbose --model opus" "$logged_args"
 
 # --- Test 14: Restart in remote-control mode preserves mode args ---
 echo "Test 14: Restart in remote-control mode preserves mode args"
@@ -284,8 +284,8 @@ chmod +x "$MOCK_CLAUDE"
 output=$(CLAUDE_CONNECT=remote-control "$WRAPPER" --debug 2>&1)
 first_call=$(sed -n '1p' "$LOG")
 second_call=$(sed -n '2p' "$LOG")
-assert_eq "first call: remote-control + extra args" "remote-control --permission-mode bypassPermissions --debug" "$first_call"
-assert_eq "second call: remote-control + restart args" "remote-control --permission-mode bypassPermissions --model sonnet" "$second_call"
+assert_eq "first call: remote-control + extra args" "remote-control --permission-mode bypassPermissions --no-create-session-in-dir --debug" "$first_call"
+assert_eq "second call: remote-control + restart args" "remote-control --permission-mode bypassPermissions --no-create-session-in-dir --model sonnet" "$second_call"
 
 # --- Test 15: Restart in telegram mode preserves mode args ---
 echo "Test 15: Restart in telegram mode preserves mode args"
@@ -332,8 +332,8 @@ chmod +x "$MOCK_CLAUDE"
 output=$(CLAUDE_CONNECT=remote-control "$WRAPPER" --debug 2>&1)
 first_call=$(sed -n '1p' "$LOG")
 second_call=$(sed -n '2p' "$LOG")
-assert_eq "first call: remote-control + debug" "remote-control --permission-mode bypassPermissions --debug" "$first_call"
-assert_eq "second call: remote-control + original debug" "remote-control --permission-mode bypassPermissions --debug" "$second_call"
+assert_eq "first call: remote-control + debug" "remote-control --permission-mode bypassPermissions --no-create-session-in-dir --debug" "$first_call"
+assert_eq "second call: remote-control + original debug" "remote-control --permission-mode bypassPermissions --no-create-session-in-dir --debug" "$second_call"
 
 # --- Test 17: Heartbeat starts in telegram mode ---
 echo "Test 17: Heartbeat starts in telegram mode"
