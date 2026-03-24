@@ -1,5 +1,27 @@
 # Milestones
 
+## v2.0 Multi-Instance Orchestration (Shipped: 2026-03-24)
+
+**Phases completed:** 5 phases, 13 plans, 26 tasks
+
+**Key accomplishments:**
+
+- systemd template unit claude@.service with %i-based per-instance config, dynamic MemoryMax via ExecStartPre, and env template with 4 new instance-aware variables
+- Three shell scripts made instance-aware: wrapper passes --name to remote-control, restart targets instruments via systemctl, service routes to template units
+- Instance-aware installer deploying claude@.service template unit with v1.1 migration function that preserves existing config in per-instance default/ directory
+- Per-instance watchdog template units (claude-watchdog@.service/timer) with hardcoded 8h intervals and installer migration from old non-template units
+- Single-command instrument add/remove/list via claude-service with automatic watchdog pairing, env template provisioning, and git clone
+- Channel flag injection in wrapper, Bun in PATH, and add-orchestra subcommand for git-free orchestra registration with claude-peers enabled
+- Autonomous supervisor CLAUDE.md with 8 sections covering tools, GSD workflow dispatch, parallel driving, user escalation, and anti-patterns
+- Fixed two blockers preventing remote-control mode startup: replaced invalid --dangerously-skip-permissions with --permission-mode bypassPermissions and added auto-confirm for Enable Remote Control prompt
+- Swapped channel_args before mode_args at all three claude invocation sites, unblocking orchestra startup
+- Remote-control mode now uses FIFO-based stdin with heartbeat writer, fixing EOF/session-death and confirmation prompt issues
+- Fixed remote-control session spawning: pre-set remoteDialogSeen + workspace trust, silent FIFO, skip eager session, skip unsupported channel flag
+- Auto-provision .mcp.json with claude-peers config from ~/.claude.json during add-orchestra, with merge support and graceful skip
+- Auto-deploy orchestra/CLAUDE.md during add-orchestra with fail-fast guard and 13-test suite
+
+---
+
 ## v1.1 VPS Reliability (Shipped: 2026-03-23)
 
 **Phases completed:** 3 phases, 6 plans, 11 tasks

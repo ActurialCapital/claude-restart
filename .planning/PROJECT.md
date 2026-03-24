@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A multi-instance management system for Claude Code on Linux VPS. Started as a restart mechanism (v1.0), grew into a reliability layer (v1.1), now evolving into an orchestration platform where multiple isolated Claude "instruments" — each in its own project folder and repo — are managed by systemd template units, with an optional autonomous "orchestra" session that supervises, dispatches work, and controls instrument lifecycle across projects.
+A multi-instance management system for Claude Code on Linux VPS. Provides a reliability layer (wrapper loop, systemd services, watchdog timers) and an orchestration platform where multiple isolated Claude "instruments" — each in its own project folder and repo — are managed by systemd template units, with an optional autonomous "orchestra" session that supervises, dispatches work, and controls instrument lifecycle across projects.
 
 ## Core Value
 
@@ -35,16 +35,23 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 - ✓ Installer deploys watchdog timer/oneshot with configurable interval — v1.1
 - ✓ claude-service watchdog and heartbeat status subcommands — v1.1
 - ✓ systemd template units (`claude@.service`) for multi-instance instrument management — v2.0
+- ✓ Per-instance env files with isolated API key, CLAUDE_CONNECT, working directory — v2.0
+- ✓ Per-instance restart files via CLAUDE_RESTART_FILE — v2.0
+- ✓ MemoryMax cgroup limits per instrument — v2.0
+- ✓ Backward-compatible single-instance mode when no name provided — v2.0
 - ✓ Instrument lifecycle tooling — add/remove/list with single command — v2.0
+- ✓ Per-instance watchdog timers auto-paired with instrument lifecycle — v2.0
+- ✓ Wrapper passes --name to remote-control, restart accepts --instance — v2.0
 - ✓ Dynamic instrument awareness — detect hot-added/removed instruments while running — v2.0
 - ✓ Optional autonomous orchestra — supervisor/dispatcher across projects — v2.0
 - ✓ Orchestra uses `claude-restart` to reboot instruments between phases (context reset) — v2.0
 - ✓ Orchestra spawns ad-hoc agents in project directories for research questions — v2.0
+- ✓ Orchestra auto-provisioned with MCP config and CLAUDE.md — zero manual setup — v2.0
 - ✓ All sessions use `remote-control` mode, both interaction models coexist (direct + orchestra) — v2.0
 
 ### Active
 
-(none — all v2.0 requirements validated)
+(none — planning next milestone)
 
 ### Out of Scope
 
@@ -55,33 +62,37 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 - Telegram integration — future add-on on top of remote-control
 - Orchestra relay mode — autonomous only; direct access covers manual interaction
 - Orchestra making project-level implementation decisions — instruments hold project intelligence
+- Claude Agent Teams integration — designed for single-repo coordination, not cross-project orchestration
+- Custom IPC protocol between sessions — `claude -p` and `claude-restart` are sufficient
+- Running both modes simultaneously per instrument — either remote-control or telegram, not both
 
-## Current Milestone: v2.0 Multi-Instance Orchestration — COMPLETE
+## Current State
 
-**Goal:** Run multiple isolated Claude instruments on a VPS with easy lifecycle management and an optional autonomous orchestra that supervises, dispatches, and controls instruments across separate projects.
+**Shipped:** v2.0 Multi-Instance Orchestration (2026-03-24)
+**Next:** Planning next milestone
 
-**Status:** All 11 phases complete. v2.0 milestone fully delivered. 2 human verification items pending (runtime VPS testing).
-
-**Delivered:**
-- systemd template units for multi-instance instrument management
-- Instrument lifecycle tooling (add/remove/list)
-- Dynamic instrument awareness (hot add/remove while running)
-- Optional autonomous orchestra (supervisor/dispatcher + ad-hoc research agents)
-- Orchestra uses claude-restart for instrument context reset between phases
-- All sessions use remote-control mode with correct permission flags
-- Orchestra auto-provisioned with claude-peers MCP config via `.mcp.json` (Phase 10 gap closure)
-- Orchestra CLAUDE.md auto-deployed during add-orchestra with fail-fast guard (Phase 11 gap closure)
+All 3 milestones shipped:
+- v1.0 MVP — wrapper loop, restart mechanism, shell integration
+- v1.1 VPS Reliability — systemd service, watchdog, heartbeat, mode selection
+- v2.0 Multi-Instance Orchestration — template units, instrument lifecycle, autonomous orchestra
 
 ## Context
 
-Shipped v1.1 with 260 LOC shell + 918 LOC tests across 3 test suites (82 assertions).
+Shipped v2.0 with ~5,200 LOC shell + tests across 3 milestones.
 Tech stack: Pure bash, zsh shell integration, systemd for Linux service management.
 Scripts: `bin/claude-wrapper`, `bin/claude-restart`, `bin/install.sh`, `bin/claude-service`.
-Artifacts: `systemd/claude@.service` (template unit), `systemd/claude-watchdog@.service` (template watchdog), `systemd/claude-watchdog@.timer` (template timer), `systemd/env.template`. Legacy non-template units remain in repo for reference.
+Artifacts: `systemd/claude@.service` (template unit), `systemd/claude-watchdog@.service` (template watchdog), `systemd/claude-watchdog@.timer` (template timer), `systemd/env.template`. `orchestra/CLAUDE.md` (supervisor behavioral spec).
 
-VPS environment: Personal Linux server with systemd and tmux. User manages VPS from phone, running multiple projects each with its own Claude instance and cloned repository. Architecture: "instruments" (isolated Claude sessions per project) + optional "orchestra" (autonomous supervisor). All sessions use `claude remote-control` for phone interaction. Two interaction models coexist: direct instrument access and centralized orchestra access.
+VPS environment: Personal Linux server with systemd. User manages VPS from phone, running multiple projects each with its own Claude instance and cloned repository. Architecture: "instruments" (isolated Claude sessions per project) + optional "orchestra" (autonomous supervisor). All sessions use `claude remote-control` for phone interaction. Two interaction models coexist: direct instrument access and centralized orchestra access.
 
-Existing tools map to new architecture: `claude-restart` becomes the orchestration primitive for instrument lifecycle control (context reset between phases). systemd template units (`claude@.service`) replace single-instance service. The orchestra is a Claude session that dispatches work, monitors status, and spawns temporary agents in project directories for research questions.
+Known tech debt (8 items from v2.0 audit, all low severity):
+- CLAUDE_WATCHDOG_HOURS env var implies configurability but timer is hardcoded 8h
+- NODEVERSION_PLACEHOLDER edge case in PATH copy
+- --instance flag untested in test-restart.sh
+- SUMMARY frontmatter missing 3 REQ-IDs (verified in VERIFICATION.md)
+- 3 human verification items pending (live VPS runtime)
+- jq/~/.claude.json graceful-skip path is warning-only
+- test/test-install.sh Test 11 pre-existing failure
 
 ## Constraints
 
@@ -105,6 +116,12 @@ Existing tools map to new architecture: `claude-restart` becomes the orchestrati
 | FIFO-based stdin for heartbeat | Cross-platform (macOS + Linux), no process substitution dependency | ✓ Good |
 | Mode-aware watchdog (telegram only) | remote-control has built-in reconnection, watchdog would cause unnecessary disruption | ✓ Good |
 | StartLimitBurst in [Unit] not [Service] | Silently ignored in [Service] section — systemd gotcha discovered during Phase 05 | ✓ Good |
+| MemoryMax via ExecStartPre + systemctl set-property | Env vars not supported in systemd resource control directives | ✓ Good |
+| Hardcoded 8h watchdog timer intervals | systemd timer directives cannot read env vars; env.template variable is documentation-only | ✓ Good |
+| Orchestra CLAUDE.md as pure prompt engineering | The CLAUDE.md IS the orchestra — no code needed beyond the behavioral spec | ✓ Good |
+| FIFO stdin for remote-control (same as telegram) | Unified pattern, heartbeat prevents session death, `y` auto-confirms prompts | ✓ Good |
+| Instruments as isolated folders with own repos | Clean separation, each instrument manages its own project intelligence | ✓ Good |
+| Orchestra is optional, autonomous-only | Direct access covers manual interaction; no relay mode needed | ✓ Good |
 
 ## Evolution
 
@@ -124,4 +141,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-24 after Phase 11 completion*
+*Last updated: 2026-03-24 after v2.0 milestone completion*

@@ -2,6 +2,55 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v2.0 — Multi-Instance Orchestration
+
+**Shipped:** 2026-03-24
+**Phases:** 5 | **Plans:** 13 | **Sessions:** ~8
+
+### What Was Built
+- systemd template unit (`claude@.service`) with %i-based per-instance config, dynamic MemoryMax, and instance-aware env template
+- Instance-aware wrapper, restart, and service scripts — backward-compatible with v1.1 single-instance mode
+- Installer with v1.1 migration preserving existing config in per-instance default/ directory
+- Per-instance watchdog template units (`claude-watchdog@.service/timer`) with installer migration
+- Single-command instrument lifecycle: `claude-service add/remove/list` with automatic watchdog pairing
+- Autonomous orchestra supervisor via CLAUDE.md behavioral spec with GSD workflow dispatch and parallel driving
+- FIFO-based remote-control stdin with heartbeat writer and auto-confirm patterns
+- Auto-provisioned MCP config (`.mcp.json`) and CLAUDE.md deployment — zero manual orchestra setup
+
+### What Worked
+- Pure prompt engineering for orchestra (CLAUDE.md IS the supervisor) — no orchestration code needed
+- Reusing FIFO-based stdin pattern from v1.1 telegram mode for remote-control solved session persistence
+- 4 gap closure phases (09-03 through 09-06, plus 10 and 11) caught integration issues before deployment
+- Milestone audit workflow caught documentation drift and missing deployment automation
+- Architecture decision: instruments hold project intelligence, orchestra is just dispatcher — clean separation
+
+### What Was Inefficient
+- Phase 9 required 4 gap closure sub-plans (09-03 through 09-06) to fix remote-control startup issues — each one discovered the next blocker sequentially rather than catching them all upfront
+- `claude remote-control` undocumented behavior (exit codes, permission flags, channel args ordering) caused trial-and-error debugging
+- ROADMAP.md progress table continued to drift — now a 3-milestone pattern
+- Nyquist validation files still never fully created (partial in 3 phases, missing in 2)
+
+### Patterns Established
+- systemd template units with %i substitution for multi-instance management
+- Instrument manifest (`manifest.json`) for fleet tracking
+- FIFO + heartbeat + auto-confirm as universal stdin strategy for non-interactive Claude sessions
+- `claude -p` as the dispatch primitive for orchestrated one-shot tasks
+- CLAUDE.md-as-supervisor pattern: behavioral spec replaces orchestration code
+
+### Key Lessons
+1. Integration gaps between phases are best caught by milestone audit, not by hoping phase-level verification is sufficient
+2. Remote-control mode has undocumented quirks — budget extra time for any phase touching claude CLI startup
+3. Gap closure phases are a feature, not a failure — they're cheaper than getting Phase 9 right on the first attempt
+4. Auto-provisioning deployment artifacts (MCP config, CLAUDE.md) during lifecycle commands prevents "manual step" gaps
+5. Orchestra as pure prompt engineering validates that CLAUDE.md specifications are powerful enough to define autonomous agents
+
+### Cost Observations
+- Model mix: 100% opus
+- Sessions: ~8
+- Notable: 13 plans across 5 phases in ~2 days; gap closure phases (4 of 13 plans) were fast single-issue fixes
+
+---
+
 ## Milestone: v1.1 — VPS Reliability
 
 **Shipped:** 2026-03-22
@@ -17,7 +66,7 @@
 
 ### What Worked
 - TDD continued to deliver zero rework — grew from 41 to 82 assertions with no regression
-- Phase dependency ordering (4→5→6) meant each phase built cleanly on the last
+- Phase dependency ordering (4->5->6) meant each phase built cleanly on the last
 - Mode-aware design (CLAUDE_CONNECT gating) kept watchdog/heartbeat from interfering with remote-control mode
 - Shared EnvironmentFile pattern unified config across service, wrapper, and watchdog
 - Mock-based testing scaled well — mocked systemctl/loginctl for installer tests without needing real Linux
@@ -89,6 +138,7 @@
 |-----------|----------|--------|------------|
 | v1.0 | ~3 | 3 | Initial process — TDD with mock-based isolation |
 | v1.1 | ~4 | 3 | Scaled TDD to systemd mocking, shared config patterns |
+| v2.0 | ~8 | 5 | Multi-phase orchestration, gap closure workflow, milestone audits |
 
 ### Cumulative Quality
 
@@ -96,8 +146,11 @@
 |-----------|-------|------------|-------------------|
 | v1.0 | 23 | 41 | 3 (pure bash, no deps) |
 | v1.1 | 82 | 123 | 4 (claude-service, systemd units, watchdog, heartbeat) |
+| v2.0 | 95+ | 150+ | 5 (template units, lifecycle, orchestra, MCP, CLAUDE.md deploy) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. TDD with environment variable overrides delivers zero-rework implementations — verified in both v1.0 and v1.1
-2. ROADMAP.md progress tables drift from actual completion — need automated sync or post-phase update discipline
+1. TDD with environment variable overrides delivers zero-rework implementations — verified in v1.0, v1.1, v2.0
+2. ROADMAP.md progress tables drift from actual completion — persistent across all 3 milestones, needs tooling fix
+3. Gap closure phases are a natural part of multi-phase milestones — budget for them rather than treating as failures
+4. Milestone audits catch documentation and integration drift that phase-level verification misses

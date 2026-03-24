@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Multi-Instance Orchestration
-status: Milestone complete
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-03-24T16:50:28.496Z"
+status: milestone complete — archived
+stopped_at: v2.0 milestone archived
+last_updated: "2026-03-24T18:20:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 5
@@ -16,45 +16,31 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-22)
+See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
-**Current focus:** Phase 11 — orchestra-claude-md-deploy
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 11
-Plan: Not started
+Milestone v2.0 complete and archived.
+Next step: `/gsd:new-milestone` for next version.
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Full decision history archived in milestones/v1.0-ROADMAP.md and milestones/v1.1-ROADMAP.md.
+Full decision history archived in milestones/v1.0-ROADMAP.md, milestones/v1.1-ROADMAP.md, and milestones/v2.0-ROADMAP.md.
 
-- [Phase 07]: MemoryMax applied via ExecStartPre + systemctl set-property (env vars not supported in systemd resource control directives)
-- [Phase 07]: Scripts use CLAUDE_INSTANCE_NAME and --instance flag for instance targeting, defaulting to backward-compatible behavior
-- [Phase 07]: Migration creates env.v1-backup before removing flat env file; WorkingDirectory extracted from old claude.service when possible
-- [Phase 08]: Hardcoded 8h timer intervals in watchdog template (systemd timer directives cannot read env vars)
-- [Phase 08]: API key and PATH copied from default instance env for non-interactive orchestra automation
-- [Phase 08]: Instrument working directories under ~/instruments/<name> by convention
-- [Phase 09]: Test extraction uses sed function body isolation instead of grep -A for reliability
-- [Phase 09]: Orchestra CLAUDE.md is pure prompt engineering -- the CLAUDE.md IS the orchestra supervisor
-- [Phase 09]: Permission flag baked into mode_args for remote-control; defensive filtering of --dangerously-skip-permissions
-- [Phase 09]: Remote-control uses identical FIFO pattern as telegram, with y written before heartbeat loop
-- [Phase 10]: claude_config variable refactored to single declaration shared by .mcp.json and remoteDialogSeen blocks
-
-### Key v2.0 Architecture Decisions
+### Key v2.0 Architecture Decisions (Archived)
 
 - All sessions use `remote-control` mode (no Telegram in this milestone)
 - Instruments are isolated: one folder, one repo, one Claude session
 - Orchestra is optional, autonomous-only (no relay mode)
-- Orchestra is a supervisor/dispatcher, not a developer -- instruments hold project intelligence
-- Orchestra spawns ad-hoc agents in project directories for research questions
+- Orchestra is a supervisor/dispatcher, not a developer
+- FIFO + heartbeat + auto-confirm as universal stdin strategy
 - `claude-restart` is the orchestration primitive for instrument context reset
-- Two interaction models coexist: direct instrument access (A) + orchestra access (B)
-- Dynamic instrument awareness: hot add/remove while system is running
 
 ### Pending Todos
 
@@ -62,12 +48,12 @@ None.
 
 ### Blockers/Concerns
 
-- Orchestra dispatch patterns are novel -- no established best practices (research MEDIUM confidence)
-- `claude remote-control` exit codes undocumented -- may need Restart=always for remote-control instances
+- Orchestra dispatch patterns are novel — no established best practices
+- `claude remote-control` exit codes undocumented — may need Restart=always for remote-control instances
 - Rate limit behavior under 3+ concurrent instances needs real-world validation
 
 ## Session Continuity
 
-Last session: 2026-03-24T16:40:14Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-03-24
+Stopped at: v2.0 milestone archived
 Resume file: None
