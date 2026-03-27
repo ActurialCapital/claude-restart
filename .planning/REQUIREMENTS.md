@@ -30,9 +30,9 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 
 ### Deployment
 
-- [ ] **DEPL-01**: Installer deploys GSD skills (`~/.claude/get-shit-done/`) to VPS
-- [ ] **DEPL-02**: Installer deploys superpowers skills to VPS
-- [ ] **DEPL-03**: `claude -p` in instrument directories inherits GSD skills from `~/.claude/`
+- [x] **DEPL-01**: Installer deploys GSD skills (`~/.claude/get-shit-done/`) to VPS
+- [x] **DEPL-02**: Installer deploys superpowers skills to VPS
+- [x] **DEPL-03**: `claude -p` in instrument directories inherits GSD skills from `~/.claude/`
 
 ### Instance Identity
 
@@ -73,9 +73,9 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 | ORCH-01 | Phase 13 | Complete |
 | ORCH-02 | Phase 13 | Complete |
 | ORCH-03 | Phase 13 | Complete |
-| DEPL-01 | Phase 14 | Pending |
-| DEPL-02 | Phase 14 | Pending |
-| DEPL-03 | Phase 14 | Pending |
+| DEPL-01 | Phase 14 | Complete |
+| DEPL-02 | Phase 14 | Complete |
+| DEPL-03 | Phase 14 | Complete |
 | INST-01 | Phase 14 | Pending |
 | INST-02 | Phase 14 | Pending |
 | SESS-01 | Phase 14 | Pending |
