@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 Phase: --
 Plan: --
 Status: v3.0 milestone complete, ready for `/gsd:new-milestone`
-Last activity: 2026-03-27
+Last activity: 2026-03-27 - Completed quick task 260327-ph1: Replace vendored skills with git clone
 
 Progress: [██████████] 100% (v3.0 milestone)
 
@@ -55,6 +55,12 @@ None.
 ### Blockers/Concerns
 
 None.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260327-ph1 | Replace vendored skills/commands with git clone from source repos | 2026-03-27 | 40ca13d | [260327-ph1](./quick/260327-ph1-replace-vendored-skills-and-commands-wit/) |
 
 ## Session Continuity
 
