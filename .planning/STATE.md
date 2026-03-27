@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
-**Current focus:** Phase 12 - Peers Teardown
+**Current focus:** Phase 13 — synchronous-dispatch
 
 ## Current Position
 
-Phase: 13 of 14 (synchronous dispatch)
-Plan: Not started
-Status: Executing phase 12 — all plans complete, awaiting verification
-Last activity: 2026-03-27
+Phase: 13 (synchronous-dispatch) — EXECUTING
+Plan: 1 of 1
+Status: Executing Phase 13
+Last activity: 2026-03-27 -- Phase 13 execution started
 
 Progress: [█████░░░░░] 50% (v3.0 milestone)
 
