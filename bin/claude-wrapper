@@ -50,15 +50,6 @@ if [[ "${CLAUDE_CONNECT:-}" == "remote-control" ]]; then
     current_args=("${filtered_args[@]}")
 fi
 
-# Channel support for claude-peers (per D-08, D-11)
-# Note: --dangerously-load-development-channels is not supported by the
-# remote-control subcommand. Skip channel_args for remote-control mode;
-# remote-control sessions load channels from project config instead.
-channel_args=()
-if [[ -n "${CLAUDE_CHANNELS:-}" && "${CLAUDE_CONNECT:-}" != "remote-control" ]]; then
-    channel_args=("--dangerously-load-development-channels" "$CLAUDE_CHANNELS")
-fi
-
 # Ensure claude global config is ready for non-interactive remote-control startup:
 # - remoteDialogSeen: bypasses "Enable Remote Control?" prompt
 # - workspace trust: bypasses "Workspace not trusted" error for current directory
@@ -133,7 +124,7 @@ while true; do
         HEARTBEAT_FIFO=$(mktemp -u /tmp/claude-heartbeat.XXXXXX)
         mkfifo "$HEARTBEAT_FIFO"
         # Launch claude reading from FIFO for stdin
-        claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
+        claude "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
         child_pid=$!
         # Start heartbeat writer in background
         (
@@ -159,7 +150,7 @@ while true; do
         # FIFO held open (no EOF) but never written to (no stale data).
         HEARTBEAT_FIFO=$(mktemp -u /tmp/claude-heartbeat.XXXXXX)
         mkfifo "$HEARTBEAT_FIFO"
-        claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
+        claude "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
         child_pid=$!
         # Hold FIFO write-end open so read-side never gets EOF
         (
@@ -174,7 +165,7 @@ while true; do
         ) &
         heartbeat_pid=$!
     else
-        claude "${channel_args[@]}" "${mode_args[@]}" "${current_args[@]}" &
+        claude "${mode_args[@]}" "${current_args[@]}" &
         child_pid=$!
     fi
     wait "$child_pid" 2>/dev/null
