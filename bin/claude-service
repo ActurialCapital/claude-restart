@@ -47,6 +47,8 @@ do_add() {
     local env_dir="$CONFIG_DIR/$name"
     local work_dir="$HOME/instruments/$name"
     local template="$CONFIG_DIR/env.template"
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
     # Validate name (alphanumeric + hyphens only, must start with alphanumeric)
     if [[ ! "$name" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]*$ ]]; then
@@ -78,6 +80,16 @@ do_add() {
     # Clone repo
     echo "Cloning $git_url to $work_dir..."
     git clone "$git_url" "$work_dir"
+
+    # Deploy instrument identity CLAUDE.md (Phase 14, per D-03)
+    local claude_md_template
+    claude_md_template="$script_dir/../instrument-CLAUDE.md.template"
+    if [[ -f "$claude_md_template" ]]; then
+        mkdir -p "$work_dir/.claude"
+        cp "$claude_md_template" "$work_dir/.claude/CLAUDE.md"
+        sed_inplace "s|INSTANCE_PLACEHOLDER|$name|g" "$work_dir/.claude/CLAUDE.md"
+        echo "Deployed instrument identity to $work_dir/.claude/CLAUDE.md"
+    fi
 
     # Create env from template
     mkdir -p "$env_dir"
@@ -158,6 +170,21 @@ do_add_orchestra() {
     # Deploy orchestra CLAUDE.md behavioral spec
     cp "$claude_md_src" "$work_dir/CLAUDE.md"
     echo "Deployed orchestra CLAUDE.md to $work_dir/CLAUDE.md"
+
+    # Deploy orchestra identity hint (supplements the behavioral spec above)
+    mkdir -p "$work_dir/.claude"
+    cat > "$work_dir/.claude/CLAUDE.md" << IDENTITY
+# Instrument: orchestra
+
+You are the **orchestra** supervisor instance. Your behavioral spec is in CLAUDE.md at the repo root.
+
+## Context Reset
+
+\`\`\`
+claude-restart --instance orchestra
+\`\`\`
+IDENTITY
+    echo "Deployed orchestra identity to $work_dir/.claude/CLAUDE.md"
 
     # Create env from template
     mkdir -p "$env_dir"

@@ -21,7 +21,7 @@ mode_args=()
 case "${CLAUDE_CONNECT:-}" in
     remote-control)
         mode_args=("remote-control" "--permission-mode" "bypassPermissions")
-        if [[ -n "${CLAUDE_INSTANCE_NAME:-}" && "${CLAUDE_INSTANCE_NAME}" != "default" ]]; then
+        if [[ -n "${CLAUDE_INSTANCE_NAME:-}" ]]; then
             mode_args+=("--name" "$CLAUDE_INSTANCE_NAME")
         fi
         ;;
