@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Synchronous Dispatch Architecture
 status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-03-27T17:36:00Z"
-last_activity: 2026-03-27 -- Completed plan 12-01 (strip peers from wrapper/env)
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-03-27T17:40:00Z"
+last_activity: 2026-03-27 -- Completed plans 12-01 and 12-02 (peers teardown)
 progress:
   total_phases: 3
   completed_phases: 0
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 12 of 14 (Peers Teardown) -- first of 3 phases in v3.0
-Plan: 1 of 2 in current phase (12-01 complete)
-Status: Executing phase 12
-Last activity: 2026-03-27 -- Completed plan 12-01 (strip peers from wrapper/env)
+Plan: 2 of 2 in current phase (all plans complete)
+Status: Executing phase 12 — all plans complete, awaiting verification
+Last activity: 2026-03-27 -- Completed plans 12-01 and 12-02 (peers teardown)
 
 Progress: [█████░░░░░] 50% (v3.0 milestone)
 
@@ -48,6 +48,12 @@ Full decision history archived in milestones/v1.0-ROADMAP.md, milestones/v1.1-RO
 - Orchestra CLAUDE.md rewritten for synchronous dispatch pattern
 - Instruments are working directories for `claude -p` AND remote-control services for phone access
 
+### Phase 12 Decisions
+
+- install.sh already had no message-watcher references -- no changes needed
+- Removed 4 peers tests from test-orchestra.sh, renumbered remaining 9 sequentially
+- Per D-02: only stopped writing claude-peers to .mcp.json; existing VPS files cleaned manually
+
 ### Pending Todos
 
 None.
@@ -60,6 +66,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-27T17:36:00Z
-Stopped at: Completed 12-01-PLAN.md
-Resume file: .planning/phases/12-peers-teardown/12-01-SUMMARY.md
+Last session: 2026-03-27T17:40:00Z
+Stopped at: Completed 12-02-PLAN.md
+Resume file: .planning/phases/12-peers-teardown/12-02-SUMMARY.md

@@ -179,43 +179,7 @@ do_add_orchestra() {
         sed_inplace "s|^PATH=.*|$default_path|" "$env_dir/env"
     fi
 
-    # Set CLAUDE_CHANNELS for claude-peers
-    sed_inplace "s|^CLAUDE_CHANNELS=.*|CLAUDE_CHANNELS=server:claude-peers|" "$env_dir/env"
-
     chmod 600 "$env_dir/env"
-
-    # Provision .mcp.json with claude-peers MCP server config (per D-02, D-03)
-    local claude_config="$HOME/.claude.json"
-    local mcp_json="$work_dir/.mcp.json"
-
-    if [[ -f "$claude_config" ]] && command -v jq &>/dev/null; then
-        local peers_config
-        peers_config=$(jq -e '.mcpServers["claude-peers"]' "$claude_config" 2>/dev/null)
-        if [[ $? -eq 0 && -n "$peers_config" ]]; then
-            if [[ -f "$mcp_json" ]]; then
-                # Merge: add/update claude-peers entry, preserve others (D-03)
-                local tmp
-                tmp=$(jq --argjson cp "$peers_config" \
-                    '.mcpServers = (.mcpServers // {}) | .mcpServers["claude-peers"] = $cp' \
-                    "$mcp_json")
-                echo "$tmp" > "$mcp_json"
-            else
-                # Create new .mcp.json with claude-peers entry
-                jq -n --argjson cp "$peers_config" \
-                    '{"mcpServers": {"claude-peers": $cp}}' > "$mcp_json"
-            fi
-            echo "Provisioned claude-peers MCP config at $mcp_json"
-        else
-            echo "Warning: claude-peers not found in $claude_config mcpServers. Skipping .mcp.json creation." >&2
-            echo "  Orchestra will not have claude-peers MCP tools until configured manually." >&2
-        fi
-    else
-        if ! command -v jq &>/dev/null; then
-            echo "Warning: jq not found. Cannot provision .mcp.json." >&2
-        elif [[ ! -f "$claude_config" ]]; then
-            echo "Warning: $claude_config not found. Cannot provision .mcp.json." >&2
-        fi
-    fi
 
     # Pre-set remoteDialogSeen for non-interactive remote-control startup
     if [[ -f "$claude_config" ]] && command -v jq &>/dev/null; then

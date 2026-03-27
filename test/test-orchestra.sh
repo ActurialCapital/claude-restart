@@ -43,68 +43,35 @@ else
     fail "do_add_orchestra missing mkdir for working directory"
 fi
 
-# Test 5: add-orchestra sets CLAUDE_CHANNELS=server:claude-peers
-if echo "$FUNC_BODY" | grep -q 'CLAUDE_CHANNELS=server:claude-peers'; then
-    pass "do_add_orchestra sets CLAUDE_CHANNELS=server:claude-peers"
-else
-    fail "do_add_orchestra missing CLAUDE_CHANNELS=server:claude-peers"
-fi
-
-# Test 6: add-orchestra enables claude@orchestra.service
+# Test 5: add-orchestra enables claude@orchestra.service
 if echo "$FUNC_BODY" | grep -q 'claude@${name}.service'; then
     pass "do_add_orchestra enables claude@orchestra.service"
 else
     fail "do_add_orchestra missing systemd enable"
 fi
 
-# Test 7: usage function mentions add-orchestra
+# Test 6: usage function mentions add-orchestra
 if grep -A 30 'usage()' "$SERVICE" | grep -q 'add-orchestra'; then
     pass "usage lists add-orchestra"
 else
     fail "usage missing add-orchestra"
 fi
 
-# Test 8: add-orchestra deploys CLAUDE.md (not just mentions it)
+# Test 7: add-orchestra deploys CLAUDE.md (not just mentions it)
 if echo "$FUNC_BODY" | grep -v '^[[:space:]]*#' | grep -q 'Deployed orchestra CLAUDE.md'; then
     pass "do_add_orchestra deploys CLAUDE.md"
 else
     fail "do_add_orchestra missing CLAUDE.md deployment"
 fi
 
-# Test 9: add-orchestra provisions .mcp.json
-if echo "$FUNC_BODY" | grep -q 'mcp_json'; then
-    pass "do_add_orchestra provisions .mcp.json"
-else
-    fail "do_add_orchestra missing .mcp.json provisioning"
-fi
-
-# Test 10: add-orchestra reads mcpServers from global config
-if echo "$FUNC_BODY" | grep -q 'mcpServers'; then
-    pass "do_add_orchestra reads mcpServers from global config"
-else
-    fail "do_add_orchestra missing mcpServers extraction"
-fi
-
-# Test 11: add-orchestra handles existing .mcp.json (merge case)
-if echo "$FUNC_BODY" | grep -q 'mcp_json'; then
-    # Check for conditional logic around existing file
-    if echo "$FUNC_BODY" | grep -q '\-f.*mcp_json\|mcp_json.*-f'; then
-        pass "do_add_orchestra handles existing .mcp.json merge"
-    else
-        fail "do_add_orchestra missing .mcp.json merge handling"
-    fi
-else
-    fail "do_add_orchestra missing .mcp.json provisioning entirely"
-fi
-
-# Test 12: add-orchestra copies orchestra/CLAUDE.md to working directory
+# Test 8: add-orchestra copies orchestra/CLAUDE.md to working directory
 if echo "$FUNC_BODY" | grep -v '^[[:space:]]*#' | grep -q 'cp.*claude_md_src.*CLAUDE.md'; then
     pass "do_add_orchestra copies CLAUDE.md to working directory"
 else
     fail "do_add_orchestra missing CLAUDE.md copy"
 fi
 
-# Test 13: add-orchestra fails if orchestra/CLAUDE.md source is missing
+# Test 9: add-orchestra fails if orchestra/CLAUDE.md source is missing
 if echo "$FUNC_BODY" | grep -q 'claude_md_src' && echo "$FUNC_BODY" | grep -q 'exit 1'; then
     pass "do_add_orchestra fails when source CLAUDE.md missing"
 else
