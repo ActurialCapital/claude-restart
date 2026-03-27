@@ -70,8 +70,8 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 
 - [ ] Orchestra dispatches GSD commands via `claude -p` into instrument directories (synchronous, stdout captured)
 - [ ] Orchestra runs parallel `claude -p` across multiple instruments simultaneously
-- [ ] Remove claude-peers MCP server, broker, message-watcher from instruments and orchestra
-- [ ] Remove CLAUDE_CHANNELS env var and `--dangerously-load-development-channels` flag from wrapper
+- [x] Remove claude-peers MCP server, broker, message-watcher from instruments and orchestra — Phase 12
+- [x] Remove CLAUDE_CHANNELS env var and `--dangerously-load-development-channels` flag from wrapper — Phase 12
 - [ ] Fix duplicate "General coding session" appearing on phone from pre-created sessions
 - [ ] Deploy GSD and superpowers skills to VPS so instruments have `/gsd:*` commands
 - [ ] Instruments know their own instance name via CLAUDE.md or env injection
@@ -95,9 +95,9 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 ## Current State
 
 **Shipped:** v2.0 Multi-Instance Orchestration (2026-03-24)
-**Current:** v3.0 Synchronous Dispatch Architecture
+**Current:** v3.0 Synchronous Dispatch Architecture — Phase 12 complete
 
-All 3 milestones shipped:
+All 3 milestones shipped. Phase 12 (Peers Teardown) stripped all claude-peers infrastructure from wrapper, services, installer, and tests.
 - v1.0 MVP — wrapper loop, restart mechanism, shell integration
 - v1.1 VPS Reliability — systemd service, watchdog, heartbeat, mode selection
 - v2.0 Multi-Instance Orchestration — template units, instrument lifecycle, autonomous orchestra
@@ -174,4 +174,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after v3.0 milestone start*
+*Last updated: 2026-03-27 after Phase 12 completion*
