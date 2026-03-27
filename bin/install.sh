@@ -115,10 +115,14 @@ do_install_linux() {
     cp "$SCRIPT_DIR/claude-service" "$INSTALL_DIR/claude-service"
     chmod +x "$INSTALL_DIR/claude-service"
 
-    # 1b. Copy env.template to config dir for claude-service add (Phase 8)
+    # 1b. Copy env.template and instrument identity template for claude-service add
     mkdir -p "$ENV_DIR"
     cp "$SCRIPT_DIR/../systemd/env.template" "$ENV_DIR/env.template"
     echo "Installed env.template to $ENV_DIR/env.template"
+    if [[ -f "$SCRIPT_DIR/../instrument-CLAUDE.md.template" ]]; then
+        cp "$SCRIPT_DIR/../instrument-CLAUDE.md.template" "$INSTALL_DIR/../instrument-CLAUDE.md.template"
+        echo "Installed instrument-CLAUDE.md.template"
+    fi
 
     # 1c. Deploy skills (GSD + superpowers) to ~/.claude/ (Phase 14)
     deploy_skills
