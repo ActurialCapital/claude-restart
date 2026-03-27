@@ -53,6 +53,12 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 
 (none — planning next milestone)
 
+### Active
+
+- [ ] claude-peers messaging does not work with remote-control instruments (TO BE CONFIRMED). Remote-control sessions don't poll for incoming messages — they only respond to human input via the bridge. Even with a human connected and an active session, peer messages go unread. Orchestra can only reach instruments via `claude -p` one-shot dispatch (proven working). v3.0 needs either a message polling loop in the wrapper, a push-based IPC mechanism, or a different session mode for instruments.
+- [ ] Installer must deploy GSD (`~/.claude/get-shit-done/`) and superpowers skills to the VPS so instruments have access to `/gsd:*` commands. Currently only installed locally — VPS instruments have no GSD skills.
+- [ ] Instruments don't know their own instance name — running `claude-restart` without `--instance` falls back to PPID walk which fails in remote-control. Instruments need a CLAUDE.md or env-injected hint to use `claude-restart --instance <name>` or `systemctl --user restart claude@<name>.service`.
+
 ### Out of Scope
 
 - Slash command integration (`/restart`) — future milestone
@@ -85,6 +91,8 @@ Artifacts: `systemd/claude@.service` (template unit), `systemd/claude-watchdog@.
 
 VPS environment: Personal Linux server with systemd. User manages VPS from phone, running multiple projects each with its own Claude instance and cloned repository. Architecture: "instruments" (isolated Claude sessions per project) + optional "orchestra" (autonomous supervisor). All sessions use `claude remote-control` for phone interaction. Two interaction models coexist: direct instrument access and centralized orchestra access.
 
+**Deployment:** SSH access available via `.env` (SSH_HOST, SSH_PRIVATE_KEY, SSH_PASSPHRASE) for live VPS testing and deployment.
+
 Known tech debt (8 items from v2.0 audit, all low severity):
 - CLAUDE_WATCHDOG_HOURS env var implies configurability but timer is hardcoded 8h
 - NODEVERSION_PLACEHOLDER edge case in PATH copy
@@ -93,6 +101,7 @@ Known tech debt (8 items from v2.0 audit, all low severity):
 - 3 human verification items pending (live VPS runtime)
 - jq/~/.claude.json graceful-skip path is warning-only
 - test/test-install.sh Test 11 pre-existing failure
+- Installer prompts for API key in remote-control mode but it must be empty (remote-control uses OAuth, API key overrides and breaks it)
 
 ## Constraints
 
@@ -120,6 +129,8 @@ Known tech debt (8 items from v2.0 audit, all low severity):
 | Hardcoded 8h watchdog timer intervals | systemd timer directives cannot read env vars; env.template variable is documentation-only | ✓ Good |
 | Orchestra CLAUDE.md as pure prompt engineering | The CLAUDE.md IS the orchestra — no code needed beyond the behavioral spec | ✓ Good |
 | FIFO stdin for remote-control (same as telegram) | Unified pattern, heartbeat prevents session death, `y` auto-confirms prompts | ✓ Good |
+| Clear ANTHROPIC_API_KEY for remote-control mode | API key overrides OAuth auth; remote-control requires Max subscription OAuth, not API key — env files must have ANTHROPIC_API_KEY empty | ✓ Good |
+| Remote-control sessions don't poll claude-peers | claude-peers is pull-based, remote-control sessions never call get_messages — even with active sessions, peer messages go unread. `claude -p` one-shot dispatch is the only working orchestra→instrument path | ⚠️ Revisit |
 | Instruments as isolated folders with own repos | Clean separation, each instrument manages its own project intelligence | ✓ Good |
 | Orchestra is optional, autonomous-only | Direct access covers manual interaction; no relay mode needed | ✓ Good |
 
