@@ -44,7 +44,7 @@
 
 - [x] **Phase 12: Peers Teardown** - Strip claude-peers infrastructure from wrapper, services, and config (completed 2026-03-27)
 - [x] **Phase 13: Synchronous Dispatch** - Orchestra CLAUDE.md rewrite and `claude -p` dispatch patterns (completed 2026-03-27)
-- [ ] **Phase 14: Skills Deployment and Identity** - GSD/superpowers on VPS, instrument self-awareness, session fix
+- [x] **Phase 14: Skills Deployment and Identity** - GSD/superpowers on VPS, instrument self-awareness, session fix (completed 2026-03-27)
 
 ## Phase Details
 
@@ -114,4 +114,4 @@ Phases execute in numeric order: 12 -> 13 -> 14
 | 11. Orchestra CLAUDE.md Auto-deploy | v2.0 | 1/1 | Complete | 2026-03-24 |
 | 12. Peers Teardown | v3.0 | 2/2 | Complete    | 2026-03-27 |
 | 13. Synchronous Dispatch | v3.0 | 1/1 | Complete    | 2026-03-27 |
-| 14. Skills Deployment and Identity | v3.0 | 1/2 | In Progress | - |
+| 14. Skills Deployment and Identity | v3.0 | 1/2 | Complete    | 2026-03-27 |
