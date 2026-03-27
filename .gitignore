@@ -20,3 +20,4 @@ Thumbs.db
 
 # Node (in case of claude-peers or tooling)
 node_modules/
+.claude/
