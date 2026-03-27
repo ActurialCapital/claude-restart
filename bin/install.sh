@@ -81,28 +81,41 @@ migrate_v1_env() {
     fi
 }
 
+GSD_REPO="${CLAUDE_RESTART_GSD_REPO:-https://github.com/gsd-build/get-shit-done}"
+SUPERPOWERS_REPO="${CLAUDE_RESTART_SUPERPOWERS_REPO:-https://github.com/obra/superpowers}"
+
 deploy_skills() {
-    local skills_src="$SCRIPT_DIR/../skills"
-    local commands_src="$SCRIPT_DIR/../commands"
     local claude_dir="$HOME/.claude"
+    local gsd_dir="$claude_dir/get-shit-done"
+    local commands_dir="$claude_dir/commands"
 
-    # Deploy GSD skills (get-shit-done)
-    if [[ -d "$skills_src/get-shit-done" ]]; then
-        mkdir -p "$claude_dir/get-shit-done"
-        cp -r "$skills_src/get-shit-done/"* "$claude_dir/get-shit-done/"
-        echo "Deployed GSD skills to $claude_dir/get-shit-done/"
+    # Deploy GSD skills (get-shit-done) via git
+    if [[ -d "$gsd_dir/.git" ]]; then
+        echo "Updating GSD skills in $gsd_dir..."
+        git -C "$gsd_dir" pull --ff-only 2>&1 || echo "Warning: GSD pull failed (using existing version)"
     else
-        echo "Warning: GSD skills not found at $skills_src/get-shit-done (skipping)"
+        echo "Cloning GSD skills to $gsd_dir..."
+        rm -rf "$gsd_dir"
+        if ! git clone "$GSD_REPO" "$gsd_dir" 2>&1; then
+            echo "Warning: GSD clone failed from $GSD_REPO (skipping)"
+            return
+        fi
     fi
+    echo "Deployed GSD skills to $gsd_dir/"
 
-    # Deploy superpowers commands
-    if [[ -d "$commands_src" ]]; then
-        mkdir -p "$claude_dir/commands"
-        cp -r "$commands_src/"* "$claude_dir/commands/"
-        echo "Deployed superpowers commands to $claude_dir/commands/"
+    # Deploy superpowers commands via git
+    if [[ -d "$commands_dir/.git" ]]; then
+        echo "Updating superpowers commands in $commands_dir..."
+        git -C "$commands_dir" pull --ff-only 2>&1 || echo "Warning: superpowers pull failed (using existing version)"
     else
-        echo "Warning: superpowers commands not found at $commands_src (skipping)"
+        echo "Cloning superpowers commands to $commands_dir..."
+        rm -rf "$commands_dir"
+        if ! git clone "$SUPERPOWERS_REPO" "$commands_dir" 2>&1; then
+            echo "Warning: superpowers clone failed from $SUPERPOWERS_REPO (skipping)"
+            return
+        fi
     fi
+    echo "Deployed superpowers commands to $commands_dir/"
 }
 
 do_install_linux() {
