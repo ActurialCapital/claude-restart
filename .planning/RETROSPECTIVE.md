@@ -2,6 +2,50 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v3.0 — Synchronous Dispatch Architecture
+
+**Shipped:** 2026-03-27
+**Phases:** 3 | **Plans:** 5 | **Sessions:** ~3
+
+### What Was Built
+- Stripped all claude-peers infrastructure (channels, broker, message-watcher, MCP server) from wrapper, services, env files, and install script
+- Rewrote orchestra CLAUDE.md for synchronous `claude -p` dispatch with parallel backgrounding, `--continue` chaining, fleet discovery, and escalation protocol
+- Added `deploy_skills()` to install.sh copying GSD workflows and superpowers commands from repo to `~/.claude/` on VPS
+- Created per-instrument identity CLAUDE.md template deployed via `claude-service add` with instance name substitution
+- Fixed session naming by removing default instance exclusion from `--name` flag logic
+
+### What Worked
+- Clean architectural pivot: replacing async peer messaging with synchronous `claude -p` removed ~200 lines of infrastructure and simplified the mental model
+- Parallel phase execution (13 and 14 could run independently since both depended on 12, not each other)
+- Milestone audit + gap closure workflow caught all tech debt items before shipping
+- Nyquist validation finally achieved 100% compliance (65 tests across 3 phases) after being flagged in v1.0, v1.1, and v2.0 retros
+- VPS verification via SSH caught stale env files (`CLAUDE_CHANNELS` still set) that code-level testing couldn't detect
+
+### What Was Inefficient
+- VPS was 20+ commits behind remote — all v3.0 work was done locally without pushing until tech debt resolution. Should push incrementally after each phase
+- Content stubs (skills/, commands/) sat empty throughout development — should populate during the phase that creates them, not as post-audit tech debt
+- Phase 14 plan count shows 1/2 in ROADMAP progress table despite both being complete — the drift pattern continues
+
+### Patterns Established
+- `claude -p` as the sole dispatch primitive (replacing claude-peers entirely)
+- `deploy_skills()` function in installer for VPS skill deployment from repo source directories
+- Identity CLAUDE.md in `.claude/CLAUDE.md` per instrument (avoids conflicting with project CLAUDE.md)
+- SSH-based VPS verification as part of milestone tech debt resolution
+
+### Key Lessons
+1. Push to remote after each phase, not just at milestone end — VPS fell 20 commits behind
+2. Populate content directories in the same phase that creates the wiring — empty stubs become tech debt
+3. Nyquist validation is achievable when treated as a first-class deliverable rather than deferred audit item
+4. VPS verification requires SSH access and is not replaceable by local testing — stale config is invisible to code analysis
+5. `claude -p` dispatch is simpler and more reliable than any form of inter-session messaging
+
+### Cost Observations
+- Model mix: 100% opus
+- Sessions: ~3
+- Notable: Entire v3.0 milestone (3 phases, 5 plans, peers teardown + dispatch rewrite + skills deployment) completed in a single day. Tech debt resolution and Nyquist validation done in one session
+
+---
+
 ## Milestone: v2.0 — Multi-Instance Orchestration
 
 **Shipped:** 2026-03-24
@@ -139,6 +183,7 @@
 | v1.0 | ~3 | 3 | Initial process — TDD with mock-based isolation |
 | v1.1 | ~4 | 3 | Scaled TDD to systemd mocking, shared config patterns |
 | v2.0 | ~8 | 5 | Multi-phase orchestration, gap closure workflow, milestone audits |
+| v3.0 | ~3 | 3 | Architecture pivot (peers→dispatch), full Nyquist compliance, VPS verification |
 
 ### Cumulative Quality
 
@@ -147,10 +192,13 @@
 | v1.0 | 23 | 41 | 3 (pure bash, no deps) |
 | v1.1 | 82 | 123 | 4 (claude-service, systemd units, watchdog, heartbeat) |
 | v2.0 | 95+ | 150+ | 5 (template units, lifecycle, orchestra, MCP, CLAUDE.md deploy) |
+| v3.0 | 150+ | 215+ | 3 (deploy_skills, identity template, orchestra dispatch rewrite) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. TDD with environment variable overrides delivers zero-rework implementations — verified in v1.0, v1.1, v2.0
-2. ROADMAP.md progress tables drift from actual completion — persistent across all 3 milestones, needs tooling fix
+1. TDD with environment variable overrides delivers zero-rework implementations — verified in v1.0, v1.1, v2.0, v3.0
+2. ROADMAP.md progress tables drift from actual completion — persistent across all 4 milestones, needs tooling fix
 3. Gap closure phases are a natural part of multi-phase milestones — budget for them rather than treating as failures
 4. Milestone audits catch documentation and integration drift that phase-level verification misses
+5. Push incrementally to remote — verified in v3.0 where VPS fell 20 commits behind
+6. VPS verification via SSH is essential — local testing cannot detect stale deployed config

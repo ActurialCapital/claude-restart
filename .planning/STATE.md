@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Synchronous Dispatch Architecture
-status: executing
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-03-27T22:00:57.221Z"
+status: completed
+stopped_at: Milestone v3.0 archived
+last_updated: "2026-03-27T23:00:00Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 3
   completed_phases: 3
   total_plans: 5
   completed_plans: 5
-  percent: 80
+  percent: 100
 ---
 
 # Project State
@@ -21,43 +21,32 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
-**Current focus:** Phase 14 — skills-deployment-and-identity
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
-Status: Executing Phase 14
+Phase: --
+Plan: --
+Status: v3.0 milestone complete, ready for `/gsd:new-milestone`
 Last activity: 2026-03-27
 
-Progress: [████████░░] 80% (v3.0 milestone)
+Progress: [██████████] 100% (v3.0 milestone)
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Full decision history archived in milestones/v1.0-ROADMAP.md, milestones/v1.1-ROADMAP.md, and milestones/v2.0-ROADMAP.md.
-
-- [Phase 13]: Orchestra CLAUDE.md rewritten from scratch for claude -p dispatch (D-09)
-- [Phase 14]: deploy_skills function added to install.sh for GSD/superpowers deployment to VPS
-- [Phase 14]: Fixed pre-existing test failures in Tests 11-20 (template unit name mismatches from v2.0)
-- [Phase 14]: Identity CLAUDE.md deployed to .claude/CLAUDE.md (D-03); session naming fix for default instance (SESS-01)
+Full decision history archived in milestones/v1.0-ROADMAP.md, milestones/v1.1-ROADMAP.md, milestones/v2.0-ROADMAP.md, and milestones/v3.0-ROADMAP.md.
 
 ### Key v3.0 Architecture Decisions
 
 - `claude -p` replaces peer messaging as primary dispatch mechanism
 - claude-peers (broker, watcher, MCP server) removed entirely
 - Fresh context by default; `--continue` for multi-step GSD sequences
-- `claude-restart` retained only for remote-control session reset
 - Orchestra CLAUDE.md rewritten for synchronous dispatch pattern
-- Instruments are working directories for `claude -p` AND remote-control services for phone access
-
-### Phase 12 Decisions
-
-- install.sh already had no message-watcher references -- no changes needed
-- Removed 4 peers tests from test-orchestra.sh, renumbered remaining 9 sequentially
-- Per D-02: only stopped writing claude-peers to .mcp.json; existing VPS files cleaned manually
+- deploy_skills in Linux path only (macOS is dev-only)
+- Identity CLAUDE.md in .claude/ not repo root
 
 ### Pending Todos
 
@@ -65,12 +54,10 @@ None.
 
 ### Blockers/Concerns
 
-- `claude -p` cold-start time (~10s) may affect parallel dispatch latency
-- Long-running execute-phase tasks need orchestra handling strategy
-- GSD skill deployment to VPS needs verification that `claude -p` inherits from `~/.claude/`
+None.
 
 ## Session Continuity
 
-Last session: 2026-03-27T21:40:00Z
-Stopped at: Completed 14-02-PLAN.md
-Resume file: .planning/phases/14-skills-deployment-and-identity/14-02-SUMMARY.md
+Last session: 2026-03-27
+Stopped at: v3.0 milestone archived
+Resume: `/gsd:new-milestone` for next version
