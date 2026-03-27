@@ -43,7 +43,7 @@
 **Milestone Goal:** Replace async peer messaging with synchronous `claude -p` dispatch, simplifying orchestra-to-instrument communication and removing all claude-peers infrastructure.
 
 - [x] **Phase 12: Peers Teardown** - Strip claude-peers infrastructure from wrapper, services, and config (completed 2026-03-27)
-- [ ] **Phase 13: Synchronous Dispatch** - Orchestra CLAUDE.md rewrite and `claude -p` dispatch patterns
+- [x] **Phase 13: Synchronous Dispatch** - Orchestra CLAUDE.md rewrite and `claude -p` dispatch patterns (completed 2026-03-27)
 - [ ] **Phase 14: Skills Deployment and Identity** - GSD/superpowers on VPS, instrument self-awareness, session fix
 
 ## Phase Details
@@ -76,7 +76,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 13-01-PLAN.md — Rewrite orchestra CLAUDE.md for claude -p dispatch and update test suite
+- [x] 13-01-PLAN.md — Rewrite orchestra CLAUDE.md for claude -p dispatch and update test suite
 
 ### Phase 14: Skills Deployment and Identity
 **Goal**: VPS instruments have GSD/superpowers skills available, know their own identity, and phone shows clean session list
@@ -114,5 +114,5 @@ Phases execute in numeric order: 12 -> 13 -> 14
 | 10. Orchestra MCP Provisioning | v2.0 | 1/1 | Complete | 2026-03-24 |
 | 11. Orchestra CLAUDE.md Auto-deploy | v2.0 | 1/1 | Complete | 2026-03-24 |
 | 12. Peers Teardown | v3.0 | 2/2 | Complete    | 2026-03-27 |
-| 13. Synchronous Dispatch | v3.0 | 0/1 | Not started | - |
+| 13. Synchronous Dispatch | v3.0 | 1/1 | Complete   | 2026-03-27 |
 | 14. Skills Deployment and Identity | v3.0 | 0/? | Not started | - |

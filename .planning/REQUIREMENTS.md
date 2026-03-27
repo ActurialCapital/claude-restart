@@ -9,10 +9,10 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 
 ### Dispatch
 
-- [ ] **DISP-01**: Orchestra dispatches GSD commands to instruments via `claude -p` with stdout captured synchronously
-- [ ] **DISP-02**: Orchestra runs parallel `claude -p` across multiple instruments simultaneously (backgrounded)
-- [ ] **DISP-03**: Orchestra uses `--continue` for multi-step GSD sequences within same instrument
-- [ ] **DISP-04**: Orchestra handles long-running `claude -p` tasks without blocking other instrument dispatch
+- [x] **DISP-01**: Orchestra dispatches GSD commands to instruments via `claude -p` with stdout captured synchronously
+- [x] **DISP-02**: Orchestra runs parallel `claude -p` across multiple instruments simultaneously (backgrounded)
+- [x] **DISP-03**: Orchestra uses `--continue` for multi-step GSD sequences within same instrument
+- [x] **DISP-04**: Orchestra handles long-running `claude -p` tasks without blocking other instrument dispatch
 
 ### Cleanup
 
@@ -24,9 +24,9 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 
 ### Orchestra
 
-- [ ] **ORCH-01**: Orchestra CLAUDE.md rewritten for `claude -p` dispatch (no send_message/check_messages)
-- [ ] **ORCH-02**: Orchestra parallel dispatch pattern documented with backgrounding and output collection
-- [ ] **ORCH-03**: Orchestra escalation protocol preserved (user questions routed via remote-control)
+- [x] **ORCH-01**: Orchestra CLAUDE.md rewritten for `claude -p` dispatch (no send_message/check_messages)
+- [x] **ORCH-02**: Orchestra parallel dispatch pattern documented with backgrounding and output collection
+- [x] **ORCH-03**: Orchestra escalation protocol preserved (user questions routed via remote-control)
 
 ### Deployment
 
@@ -61,18 +61,18 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DISP-01 | Phase 13 | Pending |
-| DISP-02 | Phase 13 | Pending |
-| DISP-03 | Phase 13 | Pending |
-| DISP-04 | Phase 13 | Pending |
+| DISP-01 | Phase 13 | Complete |
+| DISP-02 | Phase 13 | Complete |
+| DISP-03 | Phase 13 | Complete |
+| DISP-04 | Phase 13 | Complete |
 | CLNP-01 | Phase 12 | Complete |
 | CLNP-02 | Phase 12 | Complete |
 | CLNP-03 | Phase 12 | Complete |
 | CLNP-04 | Phase 12 | Complete |
 | CLNP-05 | Phase 12 | Complete |
-| ORCH-01 | Phase 13 | Pending |
-| ORCH-02 | Phase 13 | Pending |
-| ORCH-03 | Phase 13 | Pending |
+| ORCH-01 | Phase 13 | Complete |
+| ORCH-02 | Phase 13 | Complete |
+| ORCH-03 | Phase 13 | Complete |
 | DEPL-01 | Phase 14 | Pending |
 | DEPL-02 | Phase 14 | Pending |
 | DEPL-03 | Phase 14 | Pending |
