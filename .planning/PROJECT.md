@@ -72,9 +72,9 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 - [x] Orchestra runs parallel `claude -p` across multiple instruments simultaneously — Phase 13
 - [x] Remove claude-peers MCP server, broker, message-watcher from instruments and orchestra — Phase 12
 - [x] Remove CLAUDE_CHANNELS env var and `--dangerously-load-development-channels` flag from wrapper — Phase 12
-- [ ] Fix duplicate "General coding session" appearing on phone from pre-created sessions
-- [ ] Deploy GSD and superpowers skills to VPS so instruments have `/gsd:*` commands
-- [ ] Instruments know their own instance name via CLAUDE.md or env injection
+- [x] Fix duplicate "General coding session" appearing on phone from pre-created sessions — Phase 14
+- [x] Deploy GSD and superpowers skills to VPS so instruments have `/gsd:*` commands — Phase 14
+- [x] Instruments know their own instance name via CLAUDE.md or env injection — Phase 14
 - [x] Orchestra CLAUDE.md rewritten for `claude -p` dispatch architecture — Phase 13
 - [x] `claude -p --continue` for multi-step GSD sequences, fresh context by default — Phase 13
 - [x] Orchestra handles long-running `claude -p` tasks (execute-phase can take minutes) — Phase 13
@@ -95,9 +95,9 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 ## Current State
 
 **Shipped:** v2.0 Multi-Instance Orchestration (2026-03-24)
-**Current:** v3.0 Synchronous Dispatch Architecture — Phase 13 complete
+**Current:** v3.0 Synchronous Dispatch Architecture — Phase 14 complete (all phases done)
 
-All 3 milestones shipped. Phase 13 (Synchronous Dispatch) rewrote orchestra CLAUDE.md for `claude -p` dispatch with parallel execution, continuation support, and long-running task handling.
+All v3.0 phases complete. Phase 14 deployed GSD/superpowers skills to VPS via install.sh, added per-instrument identity CLAUDE.md, and fixed session naming for phone display.
 - v1.0 MVP — wrapper loop, restart mechanism, shell integration
 - v1.1 VPS Reliability — systemd service, watchdog, heartbeat, mode selection
 - v2.0 Multi-Instance Orchestration — template units, instrument lifecycle, autonomous orchestra
