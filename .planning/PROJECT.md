@@ -51,13 +51,33 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 
 ### Active
 
-(none — planning next milestone)
+## Current Milestone: v3.0 Synchronous Dispatch Architecture
+
+**Goal:** Replace async peer messaging with synchronous `claude -p` dispatch, simplifying orchestra→instrument communication and removing all claude-peers infrastructure.
+
+**Target features:**
+- Orchestra drives instruments via `claude -p` (synchronous, parallel, both directions)
+- Remove claude-peers dependency entirely (broker, watcher, MCP server, CLAUDE_CHANNELS)
+- Fix duplicate "General coding session" on phone
+- Deploy GSD/superpowers skills to VPS instruments
+- Instruments self-aware of their instance name
+- Orchestra CLAUDE.md rewrite for `claude -p` architecture
+- Fresh context by default (`/clear` irrelevant), `--continue` for multi-step
+- Parallel dispatch mechanism for multi-instrument work
+- Long-running task handling for execute-phase
 
 ### Active
 
-- [ ] claude-peers messaging does not work with remote-control instruments (TO BE CONFIRMED). Remote-control sessions don't poll for incoming messages — they only respond to human input via the bridge. Even with a human connected and an active session, peer messages go unread. Orchestra can only reach instruments via `claude -p` one-shot dispatch (proven working). v3.0 needs either a message polling loop in the wrapper, a push-based IPC mechanism, or a different session mode for instruments.
-- [ ] Installer must deploy GSD (`~/.claude/get-shit-done/`) and superpowers skills to the VPS so instruments have access to `/gsd:*` commands. Currently only installed locally — VPS instruments have no GSD skills.
-- [ ] Instruments don't know their own instance name — running `claude-restart` without `--instance` falls back to PPID walk which fails in remote-control. Instruments need a CLAUDE.md or env-injected hint to use `claude-restart --instance <name>` or `systemctl --user restart claude@<name>.service`.
+- [ ] Orchestra dispatches GSD commands via `claude -p` into instrument directories (synchronous, stdout captured)
+- [ ] Orchestra runs parallel `claude -p` across multiple instruments simultaneously
+- [ ] Remove claude-peers MCP server, broker, message-watcher from instruments and orchestra
+- [ ] Remove CLAUDE_CHANNELS env var and `--dangerously-load-development-channels` flag from wrapper
+- [ ] Fix duplicate "General coding session" appearing on phone from pre-created sessions
+- [ ] Deploy GSD and superpowers skills to VPS so instruments have `/gsd:*` commands
+- [ ] Instruments know their own instance name via CLAUDE.md or env injection
+- [ ] Orchestra CLAUDE.md rewritten for `claude -p` dispatch architecture
+- [ ] `claude -p --continue` for multi-step GSD sequences, fresh context by default
+- [ ] Orchestra handles long-running `claude -p` tasks (execute-phase can take minutes)
 
 ### Out of Scope
 
@@ -75,7 +95,7 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 ## Current State
 
 **Shipped:** v2.0 Multi-Instance Orchestration (2026-03-24)
-**Next:** Planning next milestone
+**Current:** v3.0 Synchronous Dispatch Architecture
 
 All 3 milestones shipped:
 - v1.0 MVP — wrapper loop, restart mechanism, shell integration
@@ -131,6 +151,8 @@ Known tech debt (8 items from v2.0 audit, all low severity):
 | FIFO stdin for remote-control (same as telegram) | Unified pattern, heartbeat prevents session death, `y` auto-confirms prompts | ✓ Good |
 | Clear ANTHROPIC_API_KEY for remote-control mode | API key overrides OAuth auth; remote-control requires Max subscription OAuth, not API key — env files must have ANTHROPIC_API_KEY empty | ✓ Good |
 | Remote-control sessions don't poll claude-peers | claude-peers is pull-based, remote-control sessions never call get_messages — even with active sessions, peer messages go unread. `claude -p` one-shot dispatch is the only working orchestra→instrument path | ⚠️ Revisit |
+| Replace claude-peers with `claude -p` dispatch | Peer messaging required broker, watcher sidecar, peek/ack protocol — all workarounds for channel notifications being silently dropped in remote-control mode. `claude -p` is synchronous, proven, zero infrastructure | ✓ Good |
+| Fresh context by default, `--continue` for continuity | Each `claude -p` is a clean slate. No `/clear` needed. GSD state lives in `.planning/` files, not conversation context. Use `--continue` only for multi-step sequences | ✓ Good |
 | Instruments as isolated folders with own repos | Clean separation, each instrument manages its own project intelligence | ✓ Good |
 | Orchestra is optional, autonomous-only | Direct access covers manual interaction; no relay mode needed | ✓ Good |
 
@@ -152,4 +174,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-24 after v2.0 milestone completion*
+*Last updated: 2026-03-27 after v3.0 milestone start*
