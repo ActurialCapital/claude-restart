@@ -83,7 +83,7 @@ do_add() {
 
     # Deploy instrument identity CLAUDE.md (Phase 14, per D-03)
     local claude_md_template
-    claude_md_template="$script_dir/../instrument-CLAUDE.md.template"
+    claude_md_template="$script_dir/../INSTRUMENT.md.template"
     if [[ -f "$claude_md_template" ]]; then
         mkdir -p "$work_dir/.claude"
         cp "$claude_md_template" "$work_dir/.claude/CLAUDE.md"

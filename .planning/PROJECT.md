@@ -91,7 +91,7 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 Shipped v3.0 with ~3,100 LOC shell (source + tests) across 4 milestones, 14 phases.
 Tech stack: Pure bash, zsh shell integration, systemd for Linux service management.
 Scripts: `bin/claude-wrapper`, `bin/claude-restart`, `bin/install.sh`, `bin/claude-service`.
-Artifacts: `systemd/claude@.service` (template unit), `systemd/claude-watchdog@.service` (template watchdog), `systemd/claude-watchdog@.timer` (template timer), `systemd/env.template`, `orchestra/CLAUDE.md` (supervisor behavioral spec), `instrument-CLAUDE.md.template` (identity template).
+Artifacts: `systemd/claude@.service` (template unit), `systemd/claude-watchdog@.service` (template watchdog), `systemd/claude-watchdog@.timer` (template timer), `systemd/env.template`, `orchestra/CLAUDE.md` (supervisor behavioral spec), `INSTRUMENT.md.template` (identity template).
 
 VPS environment: Personal Linux server with systemd. User manages VPS from phone, running multiple projects each with its own Claude instance and cloned repository. Architecture: "instruments" (isolated Claude sessions per project) + optional "orchestra" (autonomous supervisor dispatching via `claude -p`). All sessions use `claude remote-control` for phone interaction.
 

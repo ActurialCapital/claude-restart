@@ -119,9 +119,9 @@ do_install_linux() {
     mkdir -p "$ENV_DIR"
     cp "$SCRIPT_DIR/../systemd/env.template" "$ENV_DIR/env.template"
     echo "Installed env.template to $ENV_DIR/env.template"
-    if [[ -f "$SCRIPT_DIR/../instrument-CLAUDE.md.template" ]]; then
-        cp "$SCRIPT_DIR/../instrument-CLAUDE.md.template" "$INSTALL_DIR/../instrument-CLAUDE.md.template"
-        echo "Installed instrument-CLAUDE.md.template"
+    if [[ -f "$SCRIPT_DIR/../INSTRUMENT.md.template" ]]; then
+        cp "$SCRIPT_DIR/../INSTRUMENT.md.template" "$INSTALL_DIR/../INSTRUMENT.md.template"
+        echo "Installed INSTRUMENT.md.template"
     fi
 
     # 1c. Deploy skills (GSD + superpowers) to ~/.claude/ (Phase 14)

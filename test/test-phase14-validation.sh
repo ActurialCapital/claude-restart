@@ -80,19 +80,19 @@ assert_eq "commands directory exists in repo" "true" "$(test -d "$REPO_ROOT/comm
 # INST-01: Instruments know their own instance name via CLAUDE.md
 # =============================================================================
 
-echo "INST-01: instrument-CLAUDE.md.template provides instance identity"
+echo "INST-01: INSTRUMENT.md.template provides instance identity"
 
-assert_eq "instrument-CLAUDE.md.template exists" "true" "$(test -f "$REPO_ROOT/instrument-CLAUDE.md.template" && echo true || echo false)"
+assert_eq "INSTRUMENT.md.template exists" "true" "$(test -f "$REPO_ROOT/INSTRUMENT.md.template" && echo true || echo false)"
 
-template_content=$(cat "$REPO_ROOT/instrument-CLAUDE.md.template")
-placeholder_count=$(grep -c "INSTANCE_PLACEHOLDER" "$REPO_ROOT/instrument-CLAUDE.md.template")
+template_content=$(cat "$REPO_ROOT/INSTRUMENT.md.template")
+placeholder_count=$(grep -c "INSTANCE_PLACEHOLDER" "$REPO_ROOT/INSTRUMENT.md.template")
 assert_ge "template has at least 5 INSTANCE_PLACEHOLDER markers" 5 "$placeholder_count"
 assert_contains "template has instance name field" "Instance name" "$template_content"
 
 # Verify claude-service wires template into do_add
 service_content=$(cat "$REPO_ROOT/bin/claude-service")
 assert_contains "do_add deploys .claude/CLAUDE.md" '.claude/CLAUDE.md' "$service_content"
-assert_contains "do_add uses instrument-CLAUDE.md.template" 'instrument-CLAUDE.md.template' "$service_content"
+assert_contains "do_add uses INSTRUMENT.md.template" 'INSTRUMENT.md.template' "$service_content"
 assert_contains "do_add substitutes INSTANCE_PLACEHOLDER" 'INSTANCE_PLACEHOLDER' "$service_content"
 
 # =============================================================================
