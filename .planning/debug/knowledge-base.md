@@ -12,3 +12,11 @@ Resolved debug sessions. Used by `gsd-debugger` to surface known-pattern hypothe
 - **Files changed:** bin/claude-wrapper, test/test-wrapper.sh
 ---
 
+## peers-message-not-received -- Instrument never receives messages sent by orchestra via claude-peers
+- **Date:** 2026-03-27
+- **Error patterns:** message not received, no reply, send_message succeeds but instrument never responds, channel notification dropped, delivered but not seen
+- **Root cause:** Two-layer failure: (1) remote-control mode does not pass --dangerously-load-development-channels, so Claude Code's channel gate silently drops all MCP channel notifications. (2) pollAndPushMessages() calls /poll-messages which marks messages delivered BEFORE the dropped notification, permanently losing messages.
+- **Fix:** Added /peek-messages (read without marking delivered) and /ack-messages (explicit ack) to broker. Changed pollAndPushMessages() to use peek instead of poll. Only check_messages tool (user-initiated) marks messages delivered. Updated MCP instructions to tell Claude to call check_messages at start of every turn.
+- **Files changed:** ~/claude-peers-mcp/broker.ts, ~/claude-peers-mcp/server.ts
+---
+
