@@ -81,6 +81,30 @@ migrate_v1_env() {
     fi
 }
 
+deploy_skills() {
+    local skills_src="$SCRIPT_DIR/../skills"
+    local commands_src="$SCRIPT_DIR/../commands"
+    local claude_dir="$HOME/.claude"
+
+    # Deploy GSD skills (get-shit-done)
+    if [[ -d "$skills_src/get-shit-done" ]]; then
+        mkdir -p "$claude_dir/get-shit-done"
+        cp -r "$skills_src/get-shit-done/"* "$claude_dir/get-shit-done/"
+        echo "Deployed GSD skills to $claude_dir/get-shit-done/"
+    else
+        echo "Warning: GSD skills not found at $skills_src/get-shit-done (skipping)"
+    fi
+
+    # Deploy superpowers commands
+    if [[ -d "$commands_src" ]]; then
+        mkdir -p "$claude_dir/commands"
+        cp -r "$commands_src/"* "$claude_dir/commands/"
+        echo "Deployed superpowers commands to $claude_dir/commands/"
+    else
+        echo "Warning: superpowers commands not found at $commands_src (skipping)"
+    fi
+}
+
 do_install_linux() {
     # 1. Copy scripts to install dir
     mkdir -p "$INSTALL_DIR"
@@ -96,7 +120,10 @@ do_install_linux() {
     cp "$SCRIPT_DIR/../systemd/env.template" "$ENV_DIR/env.template"
     echo "Installed env.template to $ENV_DIR/env.template"
 
-    # 1c. Migrate v1.1 env if present (per D-08)
+    # 1c. Deploy skills (GSD + superpowers) to ~/.claude/ (Phase 14)
+    deploy_skills
+
+    # 1d. Migrate v1.1 env if present (per D-08)
     migrate_v1_env
 
     # 2. Prompt for working directory (stored in env file per D-04)
