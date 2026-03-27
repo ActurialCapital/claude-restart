@@ -121,6 +121,7 @@ do_add_orchestra() {
     local template="$CONFIG_DIR/env.template"
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local claude_config="$HOME/.claude.json"
 
     # Check for duplicate
     if [[ -d "$env_dir" ]]; then
