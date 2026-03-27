@@ -140,7 +140,7 @@ fi
 setup_linux_mocks() {
     local test_tmpdir="$1"
 
-    # Create mock bin dir with systemctl and loginctl
+    # Create mock bin dir with systemctl, loginctl, and git
     local mock_bin="$test_tmpdir/mock-bin"
     mkdir -p "$mock_bin"
 
@@ -161,6 +161,19 @@ echo "loginctl $*" >> "$MOCK_LOG"
 MOCKEOF
     chmod +x "$mock_bin/loginctl"
 
+    # Mock git - simulates clone/pull for deploy_skills
+    cat > "$mock_bin/git" << 'MOCKEOF'
+#!/bin/bash
+echo "git $*" >> "$MOCK_LOG"
+if [[ "$1" == "clone" ]]; then
+    local_target="$3"
+    mkdir -p "$local_target/.git"
+elif [[ "$1" == "-C" && "$3" == "pull" ]]; then
+    echo "Already up to date."
+fi
+MOCKEOF
+    chmod +x "$mock_bin/git"
+
     echo "$mock_bin:$mock_log"
 }
 
@@ -178,11 +191,16 @@ run_linux_install() {
     local test_systemd_dir="$test_tmpdir/systemd-user"
     local test_env_dir="$test_tmpdir/env-dir"
 
+    local test_home="$test_tmpdir/fakehome"
+    mkdir -p "$test_home"
+    local saved_home="$HOME"
+
     export CLAUDE_RESTART_INSTALL_DIR="$test_install_dir"
     export CLAUDE_RESTART_PLATFORM="Linux"
     export CLAUDE_RESTART_SYSTEMD_DIR="$test_systemd_dir"
     export CLAUDE_RESTART_ENV_DIR="$test_env_dir"
     export MOCK_LOG="$mock_log"
+    export HOME="$test_home"
 
     echo "$stdin_input" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1
 
@@ -191,6 +209,9 @@ run_linux_install() {
     echo "$test_systemd_dir" > "$test_tmpdir/_systemd_dir"
     echo "$test_env_dir" > "$test_tmpdir/_env_dir"
     echo "$mock_log" > "$test_tmpdir/_mock_log"
+    echo "$test_home" > "$test_tmpdir/_home"
+
+    export HOME="$saved_home"
 }
 
 # --- Test 11: Linux install creates systemd unit file ---
@@ -374,31 +395,69 @@ assert_not_contains "timer does not have default 8h" "OnUnitActiveSec=8h" "$t20_
 unset CLAUDE_WATCHDOG_HOURS
 
 # =============================================================================
-# Skills Deployment Tests (Phase 14)
+# Skills Deployment Tests (Phase 14) - git clone/pull based
 # =============================================================================
 
 ORIG_HOME="$HOME"
 
-# --- Test 21: Linux install deploys GSD skills ---
-echo "Test 21: Linux install deploys GSD skills"
+# Helper: set up mock environment for Linux tests with git mock
+setup_linux_mocks_with_git() {
+    local test_tmpdir="$1"
+    local git_behavior="${2:-clone}"  # "clone" (success), "fail" (clone fails), "pull" (existing repo)
+
+    local mock_bin="$test_tmpdir/mock-bin"
+    mkdir -p "$mock_bin"
+
+    local mock_log="$test_tmpdir/mock-calls.log"
+    touch "$mock_log"
+
+    # Mock systemctl
+    cat > "$mock_bin/systemctl" << 'MOCKEOF'
+#!/bin/bash
+echo "systemctl $*" >> "$MOCK_LOG"
+MOCKEOF
+    chmod +x "$mock_bin/systemctl"
+
+    # Mock loginctl
+    cat > "$mock_bin/loginctl" << 'MOCKEOF'
+#!/bin/bash
+echo "loginctl $*" >> "$MOCK_LOG"
+MOCKEOF
+    chmod +x "$mock_bin/loginctl"
+
+    # Mock git - simulates clone by creating target dir with marker files
+    cat > "$mock_bin/git" << 'MOCKEOF'
+#!/bin/bash
+echo "git $*" >> "$MOCK_LOG"
+if [[ "$1" == "clone" ]]; then
+    local_repo_url="$2"
+    local_target="$3"
+    if [[ "$GIT_MOCK_FAIL" == "true" ]]; then
+        echo "fatal: repository not found" >&2
+        exit 128
+    fi
+    mkdir -p "$local_target/.git"
+    # Create marker files based on which repo is being cloned
+    if [[ "$local_repo_url" == *"get-shit-done"* ]]; then
+        echo "gsd-cloned" > "$local_target/test-skill.md"
+    elif [[ "$local_repo_url" == *"superpowers"* ]]; then
+        echo "superpowers-cloned" > "$local_target/test-command.md"
+    fi
+elif [[ "$1" == "-C" && "$3" == "pull" ]]; then
+    echo "Already up to date."
+fi
+MOCKEOF
+    chmod +x "$mock_bin/git"
+
+    echo "$mock_bin:$mock_log"
+}
+
+# --- Test 21: Linux install clones GSD skills via git ---
+echo "Test 21: Linux install clones GSD skills via git"
 TEST21_DIR="$TMPDIR/test21"
 mkdir -p "$TEST21_DIR"
-# Create fake skills source in a mock repo layout
-FAKE_REPO="$TEST21_DIR/fake-repo"
-mkdir -p "$FAKE_REPO/bin" "$FAKE_REPO/systemd" "$FAKE_REPO/skills/get-shit-done" "$FAKE_REPO/commands"
-echo "fake-gsd-content" > "$FAKE_REPO/skills/get-shit-done/test-skill.md"
-echo "fake-command-content" > "$FAKE_REPO/commands/test-command.md"
-# Copy real scripts into fake repo
-cp "$SCRIPT_DIR/../bin/install.sh" "$FAKE_REPO/bin/install.sh"
-cp "$SCRIPT_DIR/../bin/claude-wrapper" "$FAKE_REPO/bin/claude-wrapper"
-cp "$SCRIPT_DIR/../bin/claude-restart" "$FAKE_REPO/bin/claude-restart"
-cp "$SCRIPT_DIR/../bin/claude-service" "$FAKE_REPO/bin/claude-service"
-cp "$SCRIPT_DIR/../systemd/env.template" "$FAKE_REPO/systemd/env.template"
-cp "$SCRIPT_DIR/../systemd/claude@.service" "$FAKE_REPO/systemd/claude@.service"
-cp "$SCRIPT_DIR/../systemd/claude-watchdog@.service" "$FAKE_REPO/systemd/claude-watchdog@.service"
-cp "$SCRIPT_DIR/../systemd/claude-watchdog@.timer" "$FAKE_REPO/systemd/claude-watchdog@.timer"
 
-mock_info=$(setup_linux_mocks "$TEST21_DIR")
+mock_info=$(setup_linux_mocks_with_git "$TEST21_DIR" "clone")
 mock_bin="${mock_info%%:*}"
 mock_log="${mock_info#*:}"
 
@@ -412,28 +471,22 @@ mkdir -p "$HOME"
 
 echo "/tmp/test-workdir
 sk-test-key-skills
-remote-control" | PATH="$mock_bin:$PATH" bash "$FAKE_REPO/bin/install.sh" 2>&1
+remote-control" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1
 
-assert_eq "GSD skills deployed" "true" "$(test -f "$HOME/.claude/get-shit-done/test-skill.md" && echo true || echo false)"
-assert_eq "superpowers commands deployed" "true" "$(test -f "$HOME/.claude/commands/test-command.md" && echo true || echo false)"
+assert_eq "GSD skills cloned" "true" "$(test -f "$HOME/.claude/get-shit-done/test-skill.md" && echo true || echo false)"
+assert_eq "superpowers commands cloned" "true" "$(test -f "$HOME/.claude/commands/test-command.md" && echo true || echo false)"
 
-# --- Test 22: Linux install skips skills when source missing ---
-echo "Test 22: Linux install skips skills when source missing"
+# Verify git clone was called with correct repos
+t21_mock_calls=$(cat "$mock_log")
+assert_contains "git clone called for GSD" "clone https://github.com/gsd-build/get-shit-done" "$t21_mock_calls"
+assert_contains "git clone called for superpowers" "clone https://github.com/obra/superpowers" "$t21_mock_calls"
+
+# --- Test 22: Linux install handles git clone failure gracefully ---
+echo "Test 22: Linux install handles git clone failure gracefully"
 TEST22_DIR="$TMPDIR/test22"
 mkdir -p "$TEST22_DIR"
-# No skills/commands dirs — just the scripts
-FAKE_REPO22="$TEST22_DIR/fake-repo"
-mkdir -p "$FAKE_REPO22/bin" "$FAKE_REPO22/systemd"
-cp "$SCRIPT_DIR/../bin/install.sh" "$FAKE_REPO22/bin/install.sh"
-cp "$SCRIPT_DIR/../bin/claude-wrapper" "$FAKE_REPO22/bin/claude-wrapper"
-cp "$SCRIPT_DIR/../bin/claude-restart" "$FAKE_REPO22/bin/claude-restart"
-cp "$SCRIPT_DIR/../bin/claude-service" "$FAKE_REPO22/bin/claude-service"
-cp "$SCRIPT_DIR/../systemd/env.template" "$FAKE_REPO22/systemd/env.template"
-cp "$SCRIPT_DIR/../systemd/claude@.service" "$FAKE_REPO22/systemd/claude@.service"
-cp "$SCRIPT_DIR/../systemd/claude-watchdog@.service" "$FAKE_REPO22/systemd/claude-watchdog@.service"
-cp "$SCRIPT_DIR/../systemd/claude-watchdog@.timer" "$FAKE_REPO22/systemd/claude-watchdog@.timer"
 
-mock_info=$(setup_linux_mocks "$TEST22_DIR")
+mock_info=$(setup_linux_mocks_with_git "$TEST22_DIR" "fail")
 mock_bin="${mock_info%%:*}"
 mock_log="${mock_info#*:}"
 
@@ -443,23 +496,52 @@ export CLAUDE_RESTART_SYSTEMD_DIR="$TEST22_DIR/systemd-user"
 export CLAUDE_RESTART_ENV_DIR="$TEST22_DIR/env-dir"
 export MOCK_LOG="$mock_log"
 export HOME="$TEST22_DIR/fakehome"
+export GIT_MOCK_FAIL="true"
 mkdir -p "$HOME"
 
 t22_output=$(echo "/tmp/test-workdir
 sk-test-key-skip
-remote-control" | PATH="$mock_bin:$PATH" bash "$FAKE_REPO22/bin/install.sh" 2>&1)
+remote-control" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1)
 t22_exit=$?
 
-assert_eq "install succeeds without skills dirs" "0" "$t22_exit"
-assert_contains "warning about missing GSD" "Warning" "$t22_output"
+assert_eq "install succeeds despite clone failure" "0" "$t22_exit"
+assert_contains "warning about clone failure" "Warning" "$t22_output"
+unset GIT_MOCK_FAIL
 
-# --- Test 23: Deployed skills content matches source ---
-echo "Test 23: Deployed skills content matches source"
-# Reuse TEST21_DIR where skills were deployed
-t23_content=$(cat "$TEST21_DIR/fakehome/.claude/get-shit-done/test-skill.md" 2>/dev/null || echo "")
-assert_eq "GSD content matches" "fake-gsd-content" "$t23_content"
-t23_cmd_content=$(cat "$TEST21_DIR/fakehome/.claude/commands/test-command.md" 2>/dev/null || echo "")
-assert_eq "command content matches" "fake-command-content" "$t23_cmd_content"
+# --- Test 23: Linux install updates existing repos via git pull ---
+echo "Test 23: Linux install updates existing repos via git pull"
+TEST23_DIR="$TMPDIR/test23"
+mkdir -p "$TEST23_DIR"
+
+mock_info=$(setup_linux_mocks_with_git "$TEST23_DIR" "pull")
+mock_bin="${mock_info%%:*}"
+mock_log="${mock_info#*:}"
+
+export CLAUDE_RESTART_INSTALL_DIR="$TEST23_DIR/install-bin"
+export CLAUDE_RESTART_PLATFORM="Linux"
+export CLAUDE_RESTART_SYSTEMD_DIR="$TEST23_DIR/systemd-user"
+export CLAUDE_RESTART_ENV_DIR="$TEST23_DIR/env-dir"
+export MOCK_LOG="$mock_log"
+export HOME="$TEST23_DIR/fakehome"
+mkdir -p "$HOME"
+
+# Pre-create .git dirs to simulate existing clones
+mkdir -p "$HOME/.claude/get-shit-done/.git"
+echo "existing-gsd" > "$HOME/.claude/get-shit-done/test-skill.md"
+mkdir -p "$HOME/.claude/commands/.git"
+echo "existing-commands" > "$HOME/.claude/commands/test-command.md"
+
+echo "/tmp/test-workdir
+sk-test-key-pull
+remote-control" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1
+
+# Verify git pull was called (not clone) for existing repos
+t23_mock_calls=$(cat "$mock_log")
+assert_contains "git pull called for GSD" "-C $HOME/.claude/get-shit-done pull" "$t23_mock_calls"
+assert_contains "git pull called for commands" "-C $HOME/.claude/commands pull" "$t23_mock_calls"
+# Verify existing content preserved (pull doesn't overwrite in mock)
+t23_content=$(cat "$HOME/.claude/get-shit-done/test-skill.md" 2>/dev/null || echo "")
+assert_eq "existing GSD content preserved" "existing-gsd" "$t23_content"
 
 export HOME="$ORIG_HOME"
 

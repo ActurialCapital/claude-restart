@@ -50,31 +50,31 @@ assert_ge() {
 # DEPL-01: Installer deploys GSD skills to ~/.claude/get-shit-done/
 # =============================================================================
 
-echo "DEPL-01: install.sh deploy_skills copies GSD to ~/.claude/get-shit-done/"
+echo "DEPL-01: install.sh deploy_skills clones GSD to ~/.claude/get-shit-done/"
 
-# Verify deploy_skills function exists and references correct source path
+# Verify deploy_skills function exists and uses git clone
 install_content=$(cat "$REPO_ROOT/bin/install.sh")
 assert_contains "deploy_skills function defined" "deploy_skills()" "$install_content"
-assert_contains "GSD source path references skills/get-shit-done" 'skills_src/get-shit-done' "$install_content"
-assert_contains "GSD target is ~/.claude/get-shit-done" 'claude_dir/get-shit-done' "$install_content"
+assert_contains "GSD repo URL configured" 'gsd-build/get-shit-done' "$install_content"
+assert_contains "GSD target is ~/.claude/get-shit-done" 'gsd_dir' "$install_content"
+assert_contains "git clone used for GSD" 'git clone' "$install_content"
 
 # Verify deploy_skills is wired into do_install_linux
-# Extract do_install_linux function body and check it calls deploy_skills
 deploy_call_count=$(grep -c "deploy_skills" "$REPO_ROOT/bin/install.sh")
 assert_ge "deploy_skills appears at least twice in install.sh (def + call)" 2 "$deploy_call_count"
 
-# Verify skills source directory exists in repo
-assert_eq "skills/get-shit-done directory exists" "true" "$(test -d "$REPO_ROOT/skills/get-shit-done" && echo true || echo false)"
+# Verify skills README stub exists (vendored content removed)
+assert_eq "skills/README.md exists" "true" "$(test -f "$REPO_ROOT/skills/README.md" && echo true || echo false)"
 
 # =============================================================================
 # DEPL-02: Installer deploys superpowers commands to ~/.claude/commands/
 # =============================================================================
 
-echo "DEPL-02: install.sh deploy_skills copies commands to ~/.claude/commands/"
+echo "DEPL-02: install.sh deploy_skills clones commands to ~/.claude/commands/"
 
-assert_contains "commands source path referenced" 'commands_src' "$install_content"
-assert_contains "commands target is ~/.claude/commands" 'claude_dir/commands' "$install_content"
-assert_eq "commands directory exists in repo" "true" "$(test -d "$REPO_ROOT/commands" && echo true || echo false)"
+assert_contains "superpowers repo URL configured" 'obra/superpowers' "$install_content"
+assert_contains "commands target is ~/.claude/commands" 'commands_dir' "$install_content"
+assert_eq "commands/README.md exists" "true" "$(test -f "$REPO_ROOT/commands/README.md" && echo true || echo false)"
 
 # =============================================================================
 # INST-01: Instruments know their own instance name via CLAUDE.md
@@ -127,13 +127,14 @@ assert_contains "wrapper references CLAUDE_INSTANCE_NAME for --name" 'CLAUDE_INS
 assert_contains "wrapper adds --name to mode_args" '"--name"' "$wrapper_content"
 
 # =============================================================================
-# DEPL-01/02 graceful skip: deploy_skills warns when source dirs missing
+# DEPL-01/02 graceful skip: deploy_skills warns when git clone fails
 # =============================================================================
 
-echo "DEPL-01/02 edge case: graceful skip with warning"
+echo "DEPL-01/02 edge case: graceful fallback on clone failure"
 
-assert_contains "GSD missing warning message" "Warning" "$install_content"
-assert_contains "GSD missing references skipping" "skipping" "$install_content"
+assert_contains "GSD clone failure warning" "Warning" "$install_content"
+assert_contains "clone handles pull failure" "pull failed" "$install_content"
+assert_contains "deploy_skills handles fresh clone and update" "pull --ff-only" "$install_content"
 
 # =============================================================================
 # INST-01 orchestra: add-orchestra deploys .claude/CLAUDE.md identity
