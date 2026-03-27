@@ -203,23 +203,21 @@ sk-test-key-123
 remote-control"
 
 T11_SYSTEMD_DIR=$(cat "$TEST11_DIR/_systemd_dir")
-assert_eq "unit file exists" "true" "$(test -f "$T11_SYSTEMD_DIR/claude.service" && echo true || echo false)"
+assert_eq "template unit file exists" "true" "$(test -f "$T11_SYSTEMD_DIR/claude@.service" && echo true || echo false)"
 
-unit_content=$(cat "$T11_SYSTEMD_DIR/claude.service")
+unit_content=$(cat "$T11_SYSTEMD_DIR/claude@.service")
 assert_contains "unit has Restart=on-failure" "Restart=on-failure" "$unit_content"
-assert_not_contains "placeholder replaced" "WORKING_DIR_PLACEHOLDER" "$unit_content"
-assert_contains "working dir baked in" "/tmp/test-workdir" "$unit_content"
 
 # --- Test 12: Linux install creates env file with correct permissions ---
 echo "Test 12: Linux install creates env file with correct permissions"
 T12_ENV_DIR=$(cat "$TEST11_DIR/_env_dir")
-assert_eq "env file exists" "true" "$(test -f "$T12_ENV_DIR/env" && echo true || echo false)"
+assert_eq "env file exists" "true" "$(test -f "$T12_ENV_DIR/default/env" && echo true || echo false)"
 
 # Check permissions (macOS stat format)
-env_perms=$(stat -f "%Lp" "$T12_ENV_DIR/env" 2>/dev/null || stat -c "%a" "$T12_ENV_DIR/env" 2>/dev/null)
+env_perms=$(stat -f "%Lp" "$T12_ENV_DIR/default/env" 2>/dev/null || stat -c "%a" "$T12_ENV_DIR/default/env" 2>/dev/null)
 assert_eq "env file permissions 600" "600" "$env_perms"
 
-env_content=$(cat "$T12_ENV_DIR/env")
+env_content=$(cat "$T12_ENV_DIR/default/env")
 assert_contains "env has API key" "ANTHROPIC_API_KEY=sk-test-key-123" "$env_content"
 assert_contains "env has CLAUDE_CONNECT" "CLAUDE_CONNECT=remote-control" "$env_content"
 assert_not_contains "HOME placeholder replaced" "HOME_PLACEHOLDER" "$env_content"
@@ -235,8 +233,8 @@ echo "Test 14: Linux install calls systemctl daemon-reload, enable, start"
 T14_MOCK_LOG=$(cat "$TEST11_DIR/_mock_log")
 mock_calls=$(cat "$T14_MOCK_LOG")
 assert_contains "daemon-reload called" "daemon-reload" "$mock_calls"
-assert_contains "enable called" "enable claude.service" "$mock_calls"
-assert_contains "start called" "start claude.service" "$mock_calls"
+assert_contains "enable called" "enable claude@default.service" "$mock_calls"
+assert_contains "start called" "start claude@default.service" "$mock_calls"
 
 # --- Test 15: Linux install calls loginctl enable-linger ---
 echo "Test 15: Linux install calls loginctl enable-linger"
@@ -269,10 +267,10 @@ echo "Test 17: Linux install skips existing env file"
 TEST17_DIR="$TMPDIR/test17"
 mkdir -p "$TEST17_DIR"
 
-# Pre-create env file
+# Pre-create env file in per-instance directory layout
 T17_ENV_DIR="$TEST17_DIR/env-dir"
-mkdir -p "$T17_ENV_DIR"
-echo "EXISTING=true" > "$T17_ENV_DIR/env"
+mkdir -p "$T17_ENV_DIR/default"
+echo "EXISTING=true" > "$T17_ENV_DIR/default/env"
 
 mock_info=$(setup_linux_mocks "$TEST17_DIR")
 mock_bin="${mock_info%%:*}"
@@ -288,7 +286,7 @@ export MOCK_LOG="$mock_log"
 t17_output=$(echo "/tmp/workdir" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1)
 
 assert_contains "skip message shown" "already exists" "$t17_output"
-t17_env_content=$(cat "$T17_ENV_DIR/env")
+t17_env_content=$(cat "$T17_ENV_DIR/default/env")
 assert_contains "existing env preserved" "EXISTING=true" "$t17_env_content"
 
 # Restore defaults for summary line
@@ -315,15 +313,15 @@ T18_SYSTEMD_DIR=$(cat "$TEST18_DIR/_systemd_dir")
 T18_MOCK_LOG=$(cat "$TEST18_DIR/_mock_log")
 t18_mock_calls=$(cat "$T18_MOCK_LOG")
 
-assert_eq "watchdog timer file exists" "true" "$(test -f "$T18_SYSTEMD_DIR/claude-watchdog.timer" && echo true || echo false)"
-assert_eq "watchdog oneshot file exists" "true" "$(test -f "$T18_SYSTEMD_DIR/claude-watchdog.service" && echo true || echo false)"
+assert_eq "watchdog timer file exists" "true" "$(test -f "$T18_SYSTEMD_DIR/claude-watchdog@.timer" && echo true || echo false)"
+assert_eq "watchdog oneshot file exists" "true" "$(test -f "$T18_SYSTEMD_DIR/claude-watchdog@.service" && echo true || echo false)"
 
-t18_timer_content=$(cat "$T18_SYSTEMD_DIR/claude-watchdog.timer")
+t18_timer_content=$(cat "$T18_SYSTEMD_DIR/claude-watchdog@.timer")
 assert_contains "timer has 8h interval" "OnUnitActiveSec=8h" "$t18_timer_content"
 assert_not_contains "placeholder replaced" "CLAUDE_WATCHDOG_HOURS_PLACEHOLDER" "$t18_timer_content"
 
-assert_contains "enable watchdog timer called" "enable claude-watchdog.timer" "$t18_mock_calls"
-assert_contains "start watchdog timer called" "start claude-watchdog.timer" "$t18_mock_calls"
+assert_contains "enable watchdog timer called" "enable claude-watchdog@default.timer" "$t18_mock_calls"
+assert_contains "start watchdog timer called" "start claude-watchdog@default.timer" "$t18_mock_calls"
 
 # --- Test 19: Linux uninstall removes watchdog files ---
 echo "Test 19: Linux uninstall removes watchdog files"
@@ -354,10 +352,10 @@ export MOCK_LOG="$T19_MOCK_LOG"
 PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" --uninstall 2>&1
 
 t19_mock_calls=$(cat "$T19_MOCK_LOG")
-assert_contains "stop watchdog timer called" "stop claude-watchdog.timer" "$t19_mock_calls"
-assert_contains "disable watchdog timer called" "disable claude-watchdog.timer" "$t19_mock_calls"
-assert_eq "watchdog timer removed" "false" "$(test -f "$T19_SYSTEMD_DIR/claude-watchdog.timer" && echo true || echo false)"
-assert_eq "watchdog oneshot removed" "false" "$(test -f "$T19_SYSTEMD_DIR/claude-watchdog.service" && echo true || echo false)"
+assert_contains "stop watchdog timer called" "stop claude-watchdog@default.timer" "$t19_mock_calls"
+assert_contains "disable watchdog timer called" "disable claude-watchdog@default.timer" "$t19_mock_calls"
+assert_eq "watchdog timer removed" "false" "$(test -f "$T19_SYSTEMD_DIR/claude-watchdog@.timer" && echo true || echo false)"
+assert_eq "watchdog oneshot removed" "false" "$(test -f "$T19_SYSTEMD_DIR/claude-watchdog@.service" && echo true || echo false)"
 
 # --- Test 20: Custom watchdog hours ---
 echo "Test 20: Custom watchdog hours"
@@ -370,10 +368,100 @@ sk-test-key-custom
 telegram"
 
 T20_SYSTEMD_DIR=$(cat "$TEST20_DIR/_systemd_dir")
-t20_timer_content=$(cat "$T20_SYSTEMD_DIR/claude-watchdog.timer")
+t20_timer_content=$(cat "$T20_SYSTEMD_DIR/claude-watchdog@.timer")
 assert_contains "timer has custom 4h interval" "OnUnitActiveSec=4h" "$t20_timer_content"
 assert_not_contains "timer does not have default 8h" "OnUnitActiveSec=8h" "$t20_timer_content"
 unset CLAUDE_WATCHDOG_HOURS
+
+# =============================================================================
+# Skills Deployment Tests (Phase 14)
+# =============================================================================
+
+ORIG_HOME="$HOME"
+
+# --- Test 21: Linux install deploys GSD skills ---
+echo "Test 21: Linux install deploys GSD skills"
+TEST21_DIR="$TMPDIR/test21"
+mkdir -p "$TEST21_DIR"
+# Create fake skills source in a mock repo layout
+FAKE_REPO="$TEST21_DIR/fake-repo"
+mkdir -p "$FAKE_REPO/bin" "$FAKE_REPO/systemd" "$FAKE_REPO/skills/get-shit-done" "$FAKE_REPO/commands"
+echo "fake-gsd-content" > "$FAKE_REPO/skills/get-shit-done/test-skill.md"
+echo "fake-command-content" > "$FAKE_REPO/commands/test-command.md"
+# Copy real scripts into fake repo
+cp "$SCRIPT_DIR/../bin/install.sh" "$FAKE_REPO/bin/install.sh"
+cp "$SCRIPT_DIR/../bin/claude-wrapper" "$FAKE_REPO/bin/claude-wrapper"
+cp "$SCRIPT_DIR/../bin/claude-restart" "$FAKE_REPO/bin/claude-restart"
+cp "$SCRIPT_DIR/../bin/claude-service" "$FAKE_REPO/bin/claude-service"
+cp "$SCRIPT_DIR/../systemd/env.template" "$FAKE_REPO/systemd/env.template"
+cp "$SCRIPT_DIR/../systemd/claude@.service" "$FAKE_REPO/systemd/claude@.service"
+cp "$SCRIPT_DIR/../systemd/claude-watchdog@.service" "$FAKE_REPO/systemd/claude-watchdog@.service"
+cp "$SCRIPT_DIR/../systemd/claude-watchdog@.timer" "$FAKE_REPO/systemd/claude-watchdog@.timer"
+
+mock_info=$(setup_linux_mocks "$TEST21_DIR")
+mock_bin="${mock_info%%:*}"
+mock_log="${mock_info#*:}"
+
+export CLAUDE_RESTART_INSTALL_DIR="$TEST21_DIR/install-bin"
+export CLAUDE_RESTART_PLATFORM="Linux"
+export CLAUDE_RESTART_SYSTEMD_DIR="$TEST21_DIR/systemd-user"
+export CLAUDE_RESTART_ENV_DIR="$TEST21_DIR/env-dir"
+export MOCK_LOG="$mock_log"
+export HOME="$TEST21_DIR/fakehome"
+mkdir -p "$HOME"
+
+echo "/tmp/test-workdir
+sk-test-key-skills
+remote-control" | PATH="$mock_bin:$PATH" bash "$FAKE_REPO/bin/install.sh" 2>&1
+
+assert_eq "GSD skills deployed" "true" "$(test -f "$HOME/.claude/get-shit-done/test-skill.md" && echo true || echo false)"
+assert_eq "superpowers commands deployed" "true" "$(test -f "$HOME/.claude/commands/test-command.md" && echo true || echo false)"
+
+# --- Test 22: Linux install skips skills when source missing ---
+echo "Test 22: Linux install skips skills when source missing"
+TEST22_DIR="$TMPDIR/test22"
+mkdir -p "$TEST22_DIR"
+# No skills/commands dirs — just the scripts
+FAKE_REPO22="$TEST22_DIR/fake-repo"
+mkdir -p "$FAKE_REPO22/bin" "$FAKE_REPO22/systemd"
+cp "$SCRIPT_DIR/../bin/install.sh" "$FAKE_REPO22/bin/install.sh"
+cp "$SCRIPT_DIR/../bin/claude-wrapper" "$FAKE_REPO22/bin/claude-wrapper"
+cp "$SCRIPT_DIR/../bin/claude-restart" "$FAKE_REPO22/bin/claude-restart"
+cp "$SCRIPT_DIR/../bin/claude-service" "$FAKE_REPO22/bin/claude-service"
+cp "$SCRIPT_DIR/../systemd/env.template" "$FAKE_REPO22/systemd/env.template"
+cp "$SCRIPT_DIR/../systemd/claude@.service" "$FAKE_REPO22/systemd/claude@.service"
+cp "$SCRIPT_DIR/../systemd/claude-watchdog@.service" "$FAKE_REPO22/systemd/claude-watchdog@.service"
+cp "$SCRIPT_DIR/../systemd/claude-watchdog@.timer" "$FAKE_REPO22/systemd/claude-watchdog@.timer"
+
+mock_info=$(setup_linux_mocks "$TEST22_DIR")
+mock_bin="${mock_info%%:*}"
+mock_log="${mock_info#*:}"
+
+export CLAUDE_RESTART_INSTALL_DIR="$TEST22_DIR/install-bin"
+export CLAUDE_RESTART_PLATFORM="Linux"
+export CLAUDE_RESTART_SYSTEMD_DIR="$TEST22_DIR/systemd-user"
+export CLAUDE_RESTART_ENV_DIR="$TEST22_DIR/env-dir"
+export MOCK_LOG="$mock_log"
+export HOME="$TEST22_DIR/fakehome"
+mkdir -p "$HOME"
+
+t22_output=$(echo "/tmp/test-workdir
+sk-test-key-skip
+remote-control" | PATH="$mock_bin:$PATH" bash "$FAKE_REPO22/bin/install.sh" 2>&1)
+t22_exit=$?
+
+assert_eq "install succeeds without skills dirs" "0" "$t22_exit"
+assert_contains "warning about missing GSD" "Warning" "$t22_output"
+
+# --- Test 23: Deployed skills content matches source ---
+echo "Test 23: Deployed skills content matches source"
+# Reuse TEST21_DIR where skills were deployed
+t23_content=$(cat "$TEST21_DIR/fakehome/.claude/get-shit-done/test-skill.md" 2>/dev/null || echo "")
+assert_eq "GSD content matches" "fake-gsd-content" "$t23_content"
+t23_cmd_content=$(cat "$TEST21_DIR/fakehome/.claude/commands/test-command.md" 2>/dev/null || echo "")
+assert_eq "command content matches" "fake-command-content" "$t23_cmd_content"
+
+export HOME="$ORIG_HOME"
 
 # Restore defaults for summary line
 export CLAUDE_RESTART_INSTALL_DIR="$INSTALL_DIR"
