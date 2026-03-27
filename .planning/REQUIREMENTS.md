@@ -16,7 +16,7 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 
 ### Cleanup
 
-- [ ] **CLNP-01**: Remove claude-peers MCP server config (`.mcp.json`) from instruments and orchestra
+- [x] **CLNP-01**: Remove claude-peers MCP server config (`.mcp.json`) from instruments and orchestra
 - [x] **CLNP-02**: Remove `CLAUDE_CHANNELS` env var from env files and env.template
 - [x] **CLNP-03**: Remove `--dangerously-load-development-channels` flag handling from claude-wrapper
 - [x] **CLNP-04**: Remove message-watcher sidecar from claude-wrapper
@@ -65,7 +65,7 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 | DISP-02 | Phase 13 | Pending |
 | DISP-03 | Phase 13 | Pending |
 | DISP-04 | Phase 13 | Pending |
-| CLNP-01 | Phase 12 | Pending |
+| CLNP-01 | Phase 12 | Complete |
 | CLNP-02 | Phase 12 | Complete |
 | CLNP-03 | Phase 12 | Complete |
 | CLNP-04 | Phase 12 | Complete |
