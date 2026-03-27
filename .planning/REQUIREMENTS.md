@@ -17,10 +17,10 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 ### Cleanup
 
 - [ ] **CLNP-01**: Remove claude-peers MCP server config (`.mcp.json`) from instruments and orchestra
-- [ ] **CLNP-02**: Remove `CLAUDE_CHANNELS` env var from env files and env.template
-- [ ] **CLNP-03**: Remove `--dangerously-load-development-channels` flag handling from claude-wrapper
-- [ ] **CLNP-04**: Remove message-watcher sidecar from claude-wrapper
-- [ ] **CLNP-05**: Remove claude-peers broker startup/dependency from systemd services
+- [x] **CLNP-02**: Remove `CLAUDE_CHANNELS` env var from env files and env.template
+- [x] **CLNP-03**: Remove `--dangerously-load-development-channels` flag handling from claude-wrapper
+- [x] **CLNP-04**: Remove message-watcher sidecar from claude-wrapper
+- [x] **CLNP-05**: Remove claude-peers broker startup/dependency from systemd services
 
 ### Orchestra
 
@@ -66,10 +66,10 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 | DISP-03 | Phase 13 | Pending |
 | DISP-04 | Phase 13 | Pending |
 | CLNP-01 | Phase 12 | Pending |
-| CLNP-02 | Phase 12 | Pending |
-| CLNP-03 | Phase 12 | Pending |
-| CLNP-04 | Phase 12 | Pending |
-| CLNP-05 | Phase 12 | Pending |
+| CLNP-02 | Phase 12 | Complete |
+| CLNP-03 | Phase 12 | Complete |
+| CLNP-04 | Phase 12 | Complete |
+| CLNP-05 | Phase 12 | Complete |
 | ORCH-01 | Phase 13 | Pending |
 | ORCH-02 | Phase 13 | Pending |
 | ORCH-03 | Phase 13 | Pending |
