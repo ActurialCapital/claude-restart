@@ -38,7 +38,7 @@
 
 </details>
 
-### 🚧 v3.0 Synchronous Dispatch Architecture (In Progress)
+### v3.0 Synchronous Dispatch Architecture (In Progress)
 
 **Milestone Goal:** Replace async peer messaging with synchronous `claude -p` dispatch, simplifying orchestra-to-instrument communication and removing all claude-peers infrastructure.
 
@@ -73,11 +73,10 @@ Plans:
   3. Orchestra uses `--continue` to chain multi-step GSD sequences in the same instrument context
   4. Long-running `claude -p` tasks (minutes) do not block orchestra from dispatching to other instruments
   5. Orchestra CLAUDE.md contains no references to `send_message`, `check_messages`, or claude-peers -- only `claude -p` dispatch patterns with escalation protocol preserved
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 13-01: TBD
-- [ ] 13-02: TBD
+- [ ] 13-01-PLAN.md — Rewrite orchestra CLAUDE.md for claude -p dispatch and update test suite
 
 ### Phase 14: Skills Deployment and Identity
 **Goal**: VPS instruments have GSD/superpowers skills available, know their own identity, and phone shows clean session list
@@ -115,5 +114,5 @@ Phases execute in numeric order: 12 -> 13 -> 14
 | 10. Orchestra MCP Provisioning | v2.0 | 1/1 | Complete | 2026-03-24 |
 | 11. Orchestra CLAUDE.md Auto-deploy | v2.0 | 1/1 | Complete | 2026-03-24 |
 | 12. Peers Teardown | v3.0 | 2/2 | Complete    | 2026-03-27 |
-| 13. Synchronous Dispatch | v3.0 | 0/? | Not started | - |
+| 13. Synchronous Dispatch | v3.0 | 0/1 | Not started | - |
 | 14. Skills Deployment and Identity | v3.0 | 0/? | Not started | - |
