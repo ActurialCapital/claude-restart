@@ -52,7 +52,7 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 
 | Feature | Reason |
 |---------|--------|
-| claude-peers messaging | Replaced by `claude -p` dispatch — async messaging was working around remote-control channel limitation |
+| claude-peers messaging | Replaced by `claude -p` dispatch -- async messaging was working around remote-control channel limitation |
 | `/clear` command support | Irrelevant with `claude -p` fresh context model |
 | Telegram mode for instruments | Remote-control covers phone access; Telegram deferred |
 | Orchestra relay mode | Autonomous only; direct access covers manual interaction |
@@ -61,30 +61,30 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DISP-01 | — | Pending |
-| DISP-02 | — | Pending |
-| DISP-03 | — | Pending |
-| DISP-04 | — | Pending |
-| CLNP-01 | — | Pending |
-| CLNP-02 | — | Pending |
-| CLNP-03 | — | Pending |
-| CLNP-04 | — | Pending |
-| CLNP-05 | — | Pending |
-| ORCH-01 | — | Pending |
-| ORCH-02 | — | Pending |
-| ORCH-03 | — | Pending |
-| DEPL-01 | — | Pending |
-| DEPL-02 | — | Pending |
-| DEPL-03 | — | Pending |
-| INST-01 | — | Pending |
-| INST-02 | — | Pending |
-| SESS-01 | — | Pending |
+| DISP-01 | Phase 13 | Pending |
+| DISP-02 | Phase 13 | Pending |
+| DISP-03 | Phase 13 | Pending |
+| DISP-04 | Phase 13 | Pending |
+| CLNP-01 | Phase 12 | Pending |
+| CLNP-02 | Phase 12 | Pending |
+| CLNP-03 | Phase 12 | Pending |
+| CLNP-04 | Phase 12 | Pending |
+| CLNP-05 | Phase 12 | Pending |
+| ORCH-01 | Phase 13 | Pending |
+| ORCH-02 | Phase 13 | Pending |
+| ORCH-03 | Phase 13 | Pending |
+| DEPL-01 | Phase 14 | Pending |
+| DEPL-02 | Phase 14 | Pending |
+| DEPL-03 | Phase 14 | Pending |
+| INST-01 | Phase 14 | Pending |
+| INST-02 | Phase 14 | Pending |
+| SESS-01 | Phase 14 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after initial definition*
+*Last updated: 2026-03-27 after roadmap creation*
