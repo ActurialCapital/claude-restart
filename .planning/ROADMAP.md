@@ -91,7 +91,7 @@ Plans:
 
 Plans:
 - [x] 14-01-PLAN.md — Deploy GSD and superpowers skills to VPS via install.sh
-- [ ] 14-02-PLAN.md — Instrument identity CLAUDE.md injection and session naming fix
+- [x] 14-02-PLAN.md — Instrument identity CLAUDE.md injection and session naming fix
 
 ## Progress
 

@@ -36,12 +36,12 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 
 ### Instance Identity
 
-- [ ] **INST-01**: Instruments know their own instance name via CLAUDE.md or env injection
-- [ ] **INST-02**: Instrument CLAUDE.md template includes instance name and `claude-restart --instance <name>` hint
+- [x] **INST-01**: Instruments know their own instance name via CLAUDE.md or env injection
+- [x] **INST-02**: Instrument CLAUDE.md template includes instance name and `claude-restart --instance <name>` hint
 
 ### Session Fix
 
-- [ ] **SESS-01**: Fix duplicate "General coding session" appearing on phone from pre-created remote-control sessions
+- [x] **SESS-01**: Fix duplicate "General coding session" appearing on phone from pre-created remote-control sessions
 
 ## Future Requirements
 
@@ -76,9 +76,9 @@ Requirements for Synchronous Dispatch Architecture milestone. Each maps to roadm
 | DEPL-01 | Phase 14 | Complete |
 | DEPL-02 | Phase 14 | Complete |
 | DEPL-03 | Phase 14 | Complete |
-| INST-01 | Phase 14 | Pending |
-| INST-02 | Phase 14 | Pending |
-| SESS-01 | Phase 14 | Pending |
+| INST-01 | Phase 14 | Complete |
+| INST-02 | Phase 14 | Complete |
+| SESS-01 | Phase 14 | Complete |
 
 **Coverage:**
 - v3.0 requirements: 18 total

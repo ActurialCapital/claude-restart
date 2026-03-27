@@ -497,6 +497,26 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# --- Test 24: default instance gets --name flag ---
+echo "Test 24: default instance gets --name flag"
+rm -f "$LOG" "$RESTART_FILE"
+create_mock 0
+CLAUDE_CONNECT=remote-control CLAUDE_INSTANCE_NAME=default "$WRAPPER" 2>&1
+logged_args=$(cat "$LOG")
+assert_contains "default instance has --name" "--name default" "$logged_args"
+
+# --- Test 25: wrapper no longer excludes default from --name ---
+echo "Test 25: wrapper source has no default exclusion for --name"
+wrapper_content=$(cat "$SCRIPT_DIR/../bin/claude-wrapper")
+TOTAL=$((TOTAL + 1))
+if echo "$wrapper_content" | grep -q '!= "default"'; then
+    echo "  FAIL: wrapper still excludes default from --name"
+    FAIL=$((FAIL + 1))
+else
+    echo "  PASS: wrapper includes default in --name"
+    PASS=$((PASS + 1))
+fi
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS/$TOTAL passed, $FAIL failed"

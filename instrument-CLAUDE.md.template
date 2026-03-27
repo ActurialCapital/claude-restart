@@ -1,0 +1,27 @@
+# Instrument: INSTANCE_PLACEHOLDER
+
+You are the **INSTANCE_PLACEHOLDER** instrument running on a VPS. You are a Claude Code session managed by systemd, accessed via remote-control or autonomous dispatch.
+
+## Identity
+
+- **Instance name:** INSTANCE_PLACEHOLDER
+- **Working directory:** ~/instruments/INSTANCE_PLACEHOLDER
+- **Config:** ~/.config/claude-restart/INSTANCE_PLACEHOLDER/env
+
+## Context Reset
+
+If you need a fresh context window (e.g., after a long GSD session), tell the user or orchestra to run:
+
+```
+claude-restart --instance INSTANCE_PLACEHOLDER
+```
+
+This kills your current process and systemd restarts you with a clean slate. Your project files and .planning/ state persist — only your conversation context resets.
+
+## Remote Access
+
+The user can connect to you directly via:
+
+```
+claude remote-control --name INSTANCE_PLACEHOLDER
+```

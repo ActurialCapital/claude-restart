@@ -201,6 +201,48 @@ assert_contains "usage shown" "Usage" "$output"
 output=$(bash "$SERVICE_SCRIPT" add "onlyname" 2>&1 || true)
 assert_contains "usage shown for missing url" "Usage" "$output"
 
+# --- Test 12: add deploys instrument identity CLAUDE.md ---
+echo "Test 12: add deploys instrument identity CLAUDE.md"
+> "$SYSTEMCTL_LOG"
+> "$GIT_LOG"
+bash "$SERVICE_SCRIPT" add "identity-test" "https://github.com/user/identity.git"
+
+assert_file_exists "identity CLAUDE.md created" "$HOME/instruments/identity-test/.claude/CLAUDE.md"
+id_content=$(cat "$HOME/instruments/identity-test/.claude/CLAUDE.md")
+assert_contains "instance name in identity" "identity-test" "$id_content"
+assert_contains "restart hint in identity" "claude-restart --instance identity-test" "$id_content"
+assert_contains "remote access hint" "remote-control --name identity-test" "$id_content"
+
+# Cleanup for other tests
+bash "$SERVICE_SCRIPT" remove "identity-test"
+
+# --- Test 13: identity CLAUDE.md is in .claude/ not root ---
+echo "Test 13: identity CLAUDE.md is in .claude/ subdir not root"
+> "$SYSTEMCTL_LOG"
+> "$GIT_LOG"
+# Pre-create a repo CLAUDE.md to verify it's not overwritten
+bash "$SERVICE_SCRIPT" add "nooverwrite" "https://github.com/user/nooverwrite.git"
+echo "ORIGINAL_REPO_CONTENT" > "$HOME/instruments/nooverwrite/CLAUDE.md"
+# Verify .claude/CLAUDE.md exists separately
+assert_file_exists ".claude/CLAUDE.md exists" "$HOME/instruments/nooverwrite/.claude/CLAUDE.md"
+repo_claude=$(cat "$HOME/instruments/nooverwrite/CLAUDE.md")
+assert_eq "repo CLAUDE.md not overwritten" "ORIGINAL_REPO_CONTENT" "$repo_claude"
+
+bash "$SERVICE_SCRIPT" remove "nooverwrite"
+
+# --- Test 14: add-orchestra deploys identity in .claude/ ---
+echo "Test 14: add-orchestra deploys identity in .claude/ subdir"
+> "$SYSTEMCTL_LOG"
+# Need to ensure orchestra/CLAUDE.md exists for add-orchestra
+# The script uses $script_dir/../orchestra/CLAUDE.md
+# In test env, SERVICE_SCRIPT points to real bin/claude-service, so orchestra/CLAUDE.md should exist
+output=$(bash "$SERVICE_SCRIPT" add-orchestra 2>&1)
+assert_file_exists "orchestra .claude/CLAUDE.md exists" "$HOME/instruments/orchestra/.claude/CLAUDE.md"
+orch_id_content=$(cat "$HOME/instruments/orchestra/.claude/CLAUDE.md")
+assert_contains "orchestra name in identity" "orchestra" "$orch_id_content"
+
+bash "$SERVICE_SCRIPT" remove "orchestra" 2>/dev/null || true
+
 # --- Results ---
 echo ""
 echo "Results: $PASS/$TOTAL passed, $FAIL failed"
