@@ -57,11 +57,11 @@
   2. `claude-wrapper` launches claude without `--dangerously-load-development-channels` flag and without spawning a message-watcher sidecar
   3. `env.template` and per-instance env files contain no `CLAUDE_CHANNELS` variable
   4. systemd services have no broker startup dependency or ExecStartPre referencing claude-peers
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 12-01: TBD
-- [ ] 12-02: TBD
+- [ ] 12-01-PLAN.md — Strip channel_args, message-watcher, and CLAUDE_CHANNELS from wrapper and env.template
+- [ ] 12-02-PLAN.md — Strip peers from install.sh, claude-service, and tests
 
 ### Phase 13: Synchronous Dispatch
 **Goal**: Orchestra drives instruments via synchronous `claude -p` commands with parallel execution, long-running task handling, and continuation support
@@ -114,6 +114,6 @@ Phases execute in numeric order: 12 -> 13 -> 14
 | 9. Autonomous Orchestra | v2.0 | 6/6 | Complete | 2026-03-24 |
 | 10. Orchestra MCP Provisioning | v2.0 | 1/1 | Complete | 2026-03-24 |
 | 11. Orchestra CLAUDE.md Auto-deploy | v2.0 | 1/1 | Complete | 2026-03-24 |
-| 12. Peers Teardown | v3.0 | 0/? | Not started | - |
+| 12. Peers Teardown | v3.0 | 0/2 | Planning | - |
 | 13. Synchronous Dispatch | v3.0 | 0/? | Not started | - |
 | 14. Skills Deployment and Identity | v3.0 | 0/? | Not started | - |
