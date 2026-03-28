@@ -10,7 +10,72 @@ fi
 MAX_RESTARTS="${CLAUDE_WRAPPER_MAX_RESTARTS:-10}"
 RESTART_DELAY="${CLAUDE_WRAPPER_DELAY:-2}"
 HEARTBEAT_INTERVAL="${CLAUDE_WRAPPER_HEARTBEAT_INTERVAL:-300}"
+LOG_HEARTBEAT_INTERVAL="${CLAUDE_WRAPPER_LOG_HEARTBEAT:-600}"
 restart_count=0
+
+# ---------------------------------------------------------------------------
+# Logging helpers
+# ---------------------------------------------------------------------------
+_log_prefix="claude-wrapper"
+log() { echo "${_log_prefix}[$$]: $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" >&2; }
+
+# Describe an exit code in human-readable terms
+describe_exit() {
+    local code=$1
+    if [[ $code -eq 0 ]]; then
+        echo "clean exit (0)"
+    elif [[ $code -gt 128 ]]; then
+        local sig=$((code - 128))
+        local signame
+        signame=$(kill -l "$sig" 2>/dev/null || echo "?")
+        echo "signal $sig ($signame), exit code $code"
+    else
+        echo "error exit code $code"
+    fi
+}
+
+# Rate-limited stderr filter: passes through lines that match important
+# patterns immediately, suppresses the repetitive remote-control status
+# spam, and emits a summary every N seconds.
+filter_stderr() {
+    local suppressed=0
+    local last_print
+    last_print=$(date +%s)
+    local interval=60  # print suppression summary every 60s
+    while IFS= read -r line; do
+        # Always pass through lines with substantive content.
+        # IMPORTANT: patterns must NOT match the repetitive remote-control
+        # status output ("Capacity: N/32 . New sessions will be created...").
+        if [[ "$line" == *"[E"* ]] || [[ "$line" == *"error:"* ]] || [[ "$line" == *"Error:"* ]] || \
+           [[ "$line" == *"warn:"* ]] || [[ "$line" == *"WARN"* ]] || \
+           [[ "$line" == *"fatal"* ]] || [[ "$line" == *"panic"* ]] || \
+           [[ "$line" == *"Connecting"* ]] || \
+           [[ "$line" == *"Ready"* ]] || [[ "$line" == *"heartbeat"* ]] || \
+           [[ "$line" == *"claude-wrapper"* ]] || \
+           [[ "$line" == *"session started"* ]] || [[ "$line" == *"session ended"* ]] || \
+           [[ "$line" == *"disconnect"* ]] || [[ "$line" == *"timed out"* ]] || \
+           [[ "$line" == *"connection closed"* ]] || \
+           [[ "$line" == *"exited"* ]] || [[ "$line" == *"crashed"* ]]; then
+            echo "$line" >&2
+            continue
+        fi
+        # Suppress known spam patterns (Capacity, QR code, blob data, etc.)
+        suppressed=$((suppressed + 1))
+        local now
+        now=$(date +%s)
+        if (( now - last_print >= interval )); then
+            if (( suppressed > 0 )); then
+                echo "${_log_prefix}[$$]: [stderr-filter] suppressed $suppressed status lines in last ${interval}s" >&2
+                suppressed=0
+            fi
+            last_print=$now
+        fi
+    done
+    # Final summary
+    if (( suppressed > 0 )); then
+        echo "${_log_prefix}[$$]: [stderr-filter] suppressed $suppressed status lines (final)" >&2
+    fi
+}
 
 # Store original args for "empty file = restart with same options" behavior
 original_args=("$@")
@@ -100,10 +165,14 @@ with open(config_file, 'w') as f: json.dump(d, f, indent=2)
     fi
 }
 
+log "starting mode=${CLAUDE_CONNECT:-interactive} instance=${CLAUDE_INSTANCE_NAME:-default} cwd=$(pwd) mode_args=[${mode_args[*]}] extra_args=[${current_args[*]}]"
+
 # Track child process for signal forwarding
 child_pid=""
 heartbeat_pid=""
+stderr_filter_pid=""
 HEARTBEAT_FIFO=""
+STDERR_FIFO=""
 
 # Heartbeat cleanup helper
 stop_heartbeat() {
@@ -114,10 +183,18 @@ stop_heartbeat() {
     rm -f "${HEARTBEAT_FIFO:-}" 2>/dev/null
 }
 
+# Cleanup helpers
+cleanup_children() {
+    stop_heartbeat
+    [[ -n "$stderr_filter_pid" ]] && kill "$stderr_filter_pid" 2>/dev/null && wait "$stderr_filter_pid" 2>/dev/null || true
+    stderr_filter_pid=""
+    rm -f "${HEARTBEAT_FIFO:-}" "${STDERR_FIFO:-}" 2>/dev/null
+}
+
 # Signal handlers
-trap 'stop_heartbeat; if [[ -n "$child_pid" ]]; then kill -TERM "$child_pid" 2>/dev/null; wait "$child_pid" 2>/dev/null; fi; rm -f "${HEARTBEAT_FIFO:-}" 2>/dev/null; exit 0' TERM
+trap 'log "received SIGTERM"; cleanup_children; if [[ -n "$child_pid" ]]; then kill -TERM "$child_pid" 2>/dev/null; wait "$child_pid" 2>/dev/null; fi; log "exiting (SIGTERM)"; exit 0' TERM
 trap '' HUP
-trap 'stop_heartbeat; if [[ -n "$child_pid" ]]; then kill -INT "$child_pid" 2>/dev/null; wait "$child_pid" 2>/dev/null; fi; exit 130' INT
+trap 'log "received SIGINT"; cleanup_children; if [[ -n "$child_pid" ]]; then kill -INT "$child_pid" 2>/dev/null; wait "$child_pid" 2>/dev/null; fi; log "exiting (SIGINT)"; exit 130' INT
 
 while true; do
     # Heartbeat setup (telegram mode only, per D-04, D-11, D-16)
@@ -128,6 +205,7 @@ while true; do
         # Launch claude reading from FIFO for stdin
         claude "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
         child_pid=$!
+        log "claude started pid=$child_pid (telegram mode)"
         # Start heartbeat writer in background
         (
             _hb_sleep_pid=""
@@ -152,16 +230,35 @@ while true; do
         # FIFO held open (no EOF) but never written to (no stale data).
         HEARTBEAT_FIFO=$(mktemp -u /tmp/claude-heartbeat.XXXXXX)
         mkfifo "$HEARTBEAT_FIFO"
-        claude "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" &
+        # Launch claude with stdout+stderr piped through rate-limiting filter.
+        # Remote-control mode outputs repetitive status lines (~8/sec) that
+        # flood the journal. We use a named pipe to capture output from the
+        # backgrounded process reliably.
+        STDERR_FIFO=$(mktemp -u /tmp/claude-stderr.XXXXXX)
+        mkfifo "$STDERR_FIFO"
+        filter_stderr < "$STDERR_FIFO" &
+        stderr_filter_pid=$!
+        claude "${mode_args[@]}" "${current_args[@]}" < "$HEARTBEAT_FIFO" > "$STDERR_FIFO" 2>&1 &
         child_pid=$!
-        # Hold FIFO write-end open so read-side never gets EOF
+        stderr_filter_pid=""  # subshell, cleaned up when child exits
+        log "claude started pid=$child_pid"
+        # Hold FIFO write-end open so read-side never gets EOF;
+        # also emit periodic log heartbeat so we know the wrapper is alive
         (
-            trap 'exec 3>&- 2>/dev/null; exit 0' TERM
+            _hb_sleep_pid=""
+            trap 'kill "$_hb_sleep_pid" 2>/dev/null; exec 3>&- 2>/dev/null; exit 0' TERM
             exec 3>"$HEARTBEAT_FIFO"
-            # Block until claude exits — no writes needed
             while kill -0 "$child_pid" 2>/dev/null; do
-                sleep 60 &
-                wait $! 2>/dev/null || break
+                sleep "$LOG_HEARTBEAT_INTERVAL" &
+                _hb_sleep_pid=$!
+                wait $_hb_sleep_pid 2>/dev/null || break
+                _hb_sleep_pid=""
+                # Log that wrapper and claude are still alive
+                mem_rss=""
+                if [[ -f "/proc/$child_pid/status" ]]; then
+                    mem_rss=$(awk '/VmRSS/{print $2 $3}' "/proc/$child_pid/status" 2>/dev/null || echo "?")
+                fi
+                echo "${_log_prefix}[$$]: $(date -u +%Y-%m-%dT%H:%M:%SZ) heartbeat: claude pid=$child_pid alive=true rss=${mem_rss:-unknown}" >&2
             done
             exec 3>&- 2>/dev/null
         ) &
@@ -169,16 +266,25 @@ while true; do
     else
         claude "${mode_args[@]}" "${current_args[@]}" &
         child_pid=$!
+        log "claude started pid=$child_pid (interactive mode)"
     fi
     wait "$child_pid" 2>/dev/null
     exit_code=$?
+    log "claude exited: $(describe_exit $exit_code)"
     child_pid=""
-    # Stop heartbeat if running
+    # Stop heartbeat and stderr filter if running
     stop_heartbeat
+    if [[ -n "$stderr_filter_pid" ]]; then
+        kill "$stderr_filter_pid" 2>/dev/null; wait "$stderr_filter_pid" 2>/dev/null || true
+        stderr_filter_pid=""
+    fi
+    rm -f "${STDERR_FIFO:-}" 2>/dev/null
+    STDERR_FIFO=""
 
     # If wait was interrupted by a signal (exit_code > 128), the trap handler
     # already dealt with it. For TERM the trap exits; for others, continue loop.
     if [[ $exit_code -gt 128 ]]; then
+        log "wait interrupted by signal, continuing loop"
         continue
     fi
 
@@ -189,8 +295,10 @@ while true; do
     # Check for restart signal
     if [[ -f "$RESTART_FILE" ]]; then
         restart_count=$((restart_count + 1))
+        log "restart file found, restart_count=$restart_count/$MAX_RESTARTS"
 
         if [[ $restart_count -gt $MAX_RESTARTS ]]; then
+            log "maximum restarts ($MAX_RESTARTS) reached, exiting"
             echo "claude-wrapper: Maximum restarts ($MAX_RESTARTS) reached. Exiting." >&2
             rm -f "$RESTART_FILE"
             exit 1
@@ -218,6 +326,7 @@ while true; do
         sleep "$RESTART_DELAY"
     else
         # No restart file: exit the wrapper
+        log "no restart file, exiting with code=$exit_code"
         exit $exit_code
     fi
 done

@@ -14,7 +14,9 @@ WorkingDirectory=%h
 Restart=always
 RestartSec=5
 KillSignal=SIGTERM
-TimeoutStopSec=10
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=default.target
