@@ -70,9 +70,10 @@ None.
 | 260327-vs8 | Add claude-service update command for deploying CLAUDE.md and skills | 2026-03-28 | 5f72edf | [260327-vs8](./quick/260327-vs8-add-claude-service-update-command-for-de/) |
 | 260327-vz0 | Create VPS deployment verification checklist | 2026-03-28 | 4099c96 | [260327-vz0](./quick/260327-vz0-create-vps-deployment-verification-check/) |
 | 260327-w3t | Create GitHub Actions workflow for auto-deploy to VPS | 2026-03-28 | ab86fec | [260327-w3t](./quick/260327-w3t-create-github-actions-workflow-to-auto-d/) |
+| 260328-03x | Install Node.js on VPS + update instrument template with communication model | 2026-03-28 | 864dcf0 | -- |
 
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Completed quick task 260327-w3t
+Stopped at: Completed quick task 260328-03x
 Resume: `/gsd:new-milestone` for next version

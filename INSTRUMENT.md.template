@@ -18,6 +18,14 @@ claude-restart --instance INSTANCE_PLACEHOLDER
 
 This kills your current process and systemd restarts you with a clean slate. Your project files and .planning/ state persist — only your conversation context resets.
 
+## Communication Model
+
+- **You do NOT initiate communication** with orchestra or other instruments
+- **Orchestra dispatches to you** via `claude -p` — you receive work, execute it, and return results
+- **You do NOT message orchestra** via Telegram, peer messaging, or any other channel
+- **If you need orchestra's attention**, tell the user — they relay to orchestra
+- **If you need a context reset**, output `/clear` — orchestra reads this and runs `claude-restart`
+
 ## Remote Access
 
 The user can connect to you directly via:
