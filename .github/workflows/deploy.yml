@@ -7,6 +7,7 @@
 #   VPS_SSH_KEY   - Private SSH key for VPS access
 #   VPS_HOST      - VPS hostname or IP address
 #   VPS_USER      - SSH username on VPS
+#   VPS_SSH_PASSPHRASE - Passphrase for SSH key (if key is encrypted)
 #   VPS_REPO_PATH - Path to repo clone on VPS (default: ~/claude-restart)
 
 name: Deploy to VPS
@@ -26,6 +27,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          passphrase: ${{ secrets.VPS_SSH_PASSPHRASE }}
           script: |
             set -euo pipefail
             REPO="${{ secrets.VPS_REPO_PATH }}"
