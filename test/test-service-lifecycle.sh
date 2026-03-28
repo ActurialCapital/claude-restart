@@ -96,6 +96,24 @@ cat > "$MOCK_BIN/loginctl" << 'MOCK'
 MOCK
 chmod +x "$MOCK_BIN/loginctl"
 
+# Mock npx -- records calls to a log file
+NPX_LOG="$TMPDIR/npx.log"
+cat > "$MOCK_BIN/npx" << 'MOCK'
+#!/bin/bash
+echo "npx $*" >> "${NPX_LOG}"
+MOCK
+chmod +x "$MOCK_BIN/npx"
+export NPX_LOG
+
+# Mock claude -- records calls to a log file
+CLAUDE_LOG="$TMPDIR/claude.log"
+cat > "$MOCK_BIN/claude" << 'MOCK'
+#!/bin/bash
+echo "claude $*" >> "${CLAUDE_LOG}"
+MOCK
+chmod +x "$MOCK_BIN/claude"
+export CLAUDE_LOG
+
 # Override HOME and PATH for test isolation
 export HOME="$TMPDIR/fakehome"
 mkdir -p "$HOME"
@@ -106,15 +124,15 @@ export GIT_LOG
 # Setup: create default instance env (required for add)
 CONFIG_DIR="$HOME/.config/claude-restart"
 mkdir -p "$CONFIG_DIR/default"
-cat > "$CONFIG_DIR/default/env" << 'ENV'
+cat > "$CONFIG_DIR/default/env" << ENV
 ANTHROPIC_API_KEY=sk-test-key-12345
 CLAUDE_CONNECT=remote-control
 CLAUDE_INSTANCE_NAME=default
-WORKING_DIRECTORY=/home/testuser
-CLAUDE_RESTART_FILE=/home/testuser/.config/claude-restart/default/restart
+WORKING_DIRECTORY=$HOME
+CLAUDE_RESTART_FILE=$HOME/.config/claude-restart/default/restart
 CLAUDE_MEMORY_MAX=1G
 CLAUDE_WATCHDOG_HOURS=8
-PATH=/usr/local/bin:/usr/bin:/bin:/home/testuser/.local/bin
+PATH=/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin
 ENV
 
 # Setup: deploy env.template
@@ -242,6 +260,117 @@ orch_id_content=$(cat "$HOME/instruments/orchestra/.claude/CLAUDE.md")
 assert_contains "orchestra name in identity" "orchestra" "$orch_id_content"
 
 bash "$SERVICE_SCRIPT" remove "orchestra" 2>/dev/null || true
+
+# --- Test 15: update requires argument ---
+echo "Test 15: update requires argument"
+output=$(bash "$SERVICE_SCRIPT" update 2>&1 || true)
+assert_contains "usage shown" "Usage" "$output"
+
+# --- Test 16: update rejects nonexistent instrument ---
+echo "Test 16: update rejects nonexistent instrument"
+output=$(bash "$SERVICE_SCRIPT" update "doesnotexist" 2>&1 || true)
+assert_contains "not found" "not found" "$output"
+
+# --- Test 17: update re-deploys instrument identity CLAUDE.md ---
+echo "Test 17: update re-deploys instrument identity"
+> "$SYSTEMCTL_LOG"
+> "$GIT_LOG"
+> "$NPX_LOG"
+> "$CLAUDE_LOG"
+bash "$SERVICE_SCRIPT" add "update-test" "https://github.com/user/update.git"
+
+# Corrupt the identity file to prove update replaces it
+echo "CORRUPTED" > "$HOME/instruments/update-test/.claude/CLAUDE.md"
+
+bash "$SERVICE_SCRIPT" update "update-test"
+
+id_content=$(cat "$HOME/instruments/update-test/.claude/CLAUDE.md")
+assert_contains "identity restored with instance name" "update-test" "$id_content"
+assert_contains "identity has restart hint" "claude-restart --instance update-test" "$id_content"
+
+# Verify deploy_skills was called
+npx_calls=$(cat "$NPX_LOG")
+assert_contains "npx called for GSD" "get-shit-done-cc" "$npx_calls"
+claude_calls=$(cat "$CLAUDE_LOG")
+assert_contains "claude called for superpowers" "plugins install" "$claude_calls"
+
+bash "$SERVICE_SCRIPT" remove "update-test"
+
+# --- Test 18: update orchestra re-deploys behavioral spec and identity ---
+echo "Test 18: update orchestra re-deploys behavioral spec and identity"
+> "$SYSTEMCTL_LOG"
+> "$NPX_LOG"
+> "$CLAUDE_LOG"
+bash "$SERVICE_SCRIPT" add-orchestra
+
+# Corrupt both files
+echo "CORRUPTED" > "$HOME/instruments/orchestra/CLAUDE.md"
+echo "CORRUPTED" > "$HOME/instruments/orchestra/.claude/CLAUDE.md"
+
+bash "$SERVICE_SCRIPT" update "orchestra"
+
+# Behavioral spec should be restored from orchestra/CLAUDE.md source
+orch_spec=$(cat "$HOME/instruments/orchestra/CLAUDE.md")
+assert_contains "behavioral spec restored" "orchestra" "$orch_spec"
+# Should NOT contain "CORRUPTED"
+TOTAL=$((TOTAL + 1))
+if [[ "$orch_spec" != *"CORRUPTED"* ]]; then
+    echo "  PASS: behavioral spec not corrupted"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: behavioral spec still corrupted"
+    FAIL=$((FAIL + 1))
+fi
+
+# Identity hint should be restored
+orch_id=$(cat "$HOME/instruments/orchestra/.claude/CLAUDE.md")
+assert_contains "identity restored" "orchestra" "$orch_id"
+
+bash "$SERVICE_SCRIPT" remove "orchestra" 2>/dev/null || true
+
+# --- Test 19: update --all iterates all instruments ---
+echo "Test 19: update --all iterates all instruments"
+> "$SYSTEMCTL_LOG"
+> "$GIT_LOG"
+> "$NPX_LOG"
+> "$CLAUDE_LOG"
+bash "$SERVICE_SCRIPT" add "all-test-a" "https://github.com/user/a.git"
+bash "$SERVICE_SCRIPT" add "all-test-b" "https://github.com/user/b.git"
+
+# Corrupt both identity files
+echo "CORRUPTED" > "$HOME/instruments/all-test-a/.claude/CLAUDE.md"
+echo "CORRUPTED" > "$HOME/instruments/all-test-b/.claude/CLAUDE.md"
+
+bash "$SERVICE_SCRIPT" update --all
+
+# Both should be restored
+id_a=$(cat "$HOME/instruments/all-test-a/.claude/CLAUDE.md")
+assert_contains "instrument a restored" "all-test-a" "$id_a"
+id_b=$(cat "$HOME/instruments/all-test-b/.claude/CLAUDE.md")
+assert_contains "instrument b restored" "all-test-b" "$id_b"
+
+# deploy_skills called exactly once (not per-instrument)
+npx_count=$(grep -c "get-shit-done-cc" "$NPX_LOG")
+assert_eq "deploy_skills called once" "1" "$npx_count"
+
+bash "$SERVICE_SCRIPT" remove "all-test-a"
+bash "$SERVICE_SCRIPT" remove "all-test-b"
+
+# --- Test 20: update does NOT modify env files ---
+echo "Test 20: update does not modify env files"
+> "$SYSTEMCTL_LOG"
+> "$GIT_LOG"
+> "$NPX_LOG"
+> "$CLAUDE_LOG"
+bash "$SERVICE_SCRIPT" add "envcheck" "https://github.com/user/envcheck.git"
+
+env_before=$(cat "$CONFIG_DIR/envcheck/env")
+bash "$SERVICE_SCRIPT" update "envcheck"
+env_after=$(cat "$CONFIG_DIR/envcheck/env")
+
+assert_eq "env file unchanged" "$env_before" "$env_after"
+
+bash "$SERVICE_SCRIPT" remove "envcheck"
 
 # --- Results ---
 echo ""
