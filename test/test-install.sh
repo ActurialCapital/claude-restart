@@ -140,7 +140,7 @@ fi
 setup_linux_mocks() {
     local test_tmpdir="$1"
 
-    # Create mock bin dir with systemctl, loginctl, and git
+    # Create mock bin dir with systemctl, loginctl, npx, and claude
     local mock_bin="$test_tmpdir/mock-bin"
     mkdir -p "$mock_bin"
 
@@ -161,16 +161,32 @@ echo "loginctl $*" >> "$MOCK_LOG"
 MOCKEOF
     chmod +x "$mock_bin/loginctl"
 
-    # Mock git - simulates clone/pull for deploy_skills
+    # Mock npx - logs calls for deploy_skills GSD install
+    cat > "$mock_bin/npx" << 'MOCKEOF'
+#!/bin/bash
+echo "npx $*" >> "$MOCK_LOG"
+if [[ "$NPX_MOCK_FAIL" == "true" ]]; then
+    echo "npm ERR! not found: get-shit-done-cc" >&2
+    exit 1
+fi
+MOCKEOF
+    chmod +x "$mock_bin/npx"
+
+    # Mock claude - logs calls for deploy_skills superpowers install
+    cat > "$mock_bin/claude" << 'MOCKEOF'
+#!/bin/bash
+echo "claude $*" >> "$MOCK_LOG"
+if [[ "$CLAUDE_MOCK_FAIL" == "true" ]]; then
+    echo "Error: plugin not found" >&2
+    exit 1
+fi
+MOCKEOF
+    chmod +x "$mock_bin/claude"
+
+    # Mock git - needed for some tests
     cat > "$mock_bin/git" << 'MOCKEOF'
 #!/bin/bash
 echo "git $*" >> "$MOCK_LOG"
-if [[ "$1" == "clone" ]]; then
-    local_target="$3"
-    mkdir -p "$local_target/.git"
-elif [[ "$1" == "-C" && "$3" == "pull" ]]; then
-    echo "Already up to date."
-fi
 MOCKEOF
     chmod +x "$mock_bin/git"
 
@@ -395,69 +411,17 @@ assert_not_contains "timer does not have default 8h" "OnUnitActiveSec=8h" "$t20_
 unset CLAUDE_WATCHDOG_HOURS
 
 # =============================================================================
-# Skills Deployment Tests (Phase 14) - git clone/pull based
+# Skills Deployment Tests - official installer based (npx + claude plugins)
 # =============================================================================
 
 ORIG_HOME="$HOME"
 
-# Helper: set up mock environment for Linux tests with git mock
-setup_linux_mocks_with_git() {
-    local test_tmpdir="$1"
-    local git_behavior="${2:-clone}"  # "clone" (success), "fail" (clone fails), "pull" (existing repo)
-
-    local mock_bin="$test_tmpdir/mock-bin"
-    mkdir -p "$mock_bin"
-
-    local mock_log="$test_tmpdir/mock-calls.log"
-    touch "$mock_log"
-
-    # Mock systemctl
-    cat > "$mock_bin/systemctl" << 'MOCKEOF'
-#!/bin/bash
-echo "systemctl $*" >> "$MOCK_LOG"
-MOCKEOF
-    chmod +x "$mock_bin/systemctl"
-
-    # Mock loginctl
-    cat > "$mock_bin/loginctl" << 'MOCKEOF'
-#!/bin/bash
-echo "loginctl $*" >> "$MOCK_LOG"
-MOCKEOF
-    chmod +x "$mock_bin/loginctl"
-
-    # Mock git - simulates clone by creating target dir with marker files
-    cat > "$mock_bin/git" << 'MOCKEOF'
-#!/bin/bash
-echo "git $*" >> "$MOCK_LOG"
-if [[ "$1" == "clone" ]]; then
-    local_repo_url="$2"
-    local_target="$3"
-    if [[ "$GIT_MOCK_FAIL" == "true" ]]; then
-        echo "fatal: repository not found" >&2
-        exit 128
-    fi
-    mkdir -p "$local_target/.git"
-    # Create marker files based on which repo is being cloned
-    if [[ "$local_repo_url" == *"get-shit-done"* ]]; then
-        echo "gsd-cloned" > "$local_target/test-skill.md"
-    elif [[ "$local_repo_url" == *"superpowers"* ]]; then
-        echo "superpowers-cloned" > "$local_target/test-command.md"
-    fi
-elif [[ "$1" == "-C" && "$3" == "pull" ]]; then
-    echo "Already up to date."
-fi
-MOCKEOF
-    chmod +x "$mock_bin/git"
-
-    echo "$mock_bin:$mock_log"
-}
-
-# --- Test 21: Linux install clones GSD skills via git ---
-echo "Test 21: Linux install clones GSD skills via git"
+# --- Test 21: Linux install calls npx for GSD and claude for superpowers ---
+echo "Test 21: Linux install calls npx for GSD and claude plugins for superpowers"
 TEST21_DIR="$TMPDIR/test21"
 mkdir -p "$TEST21_DIR"
 
-mock_info=$(setup_linux_mocks_with_git "$TEST21_DIR" "clone")
+mock_info=$(setup_linux_mocks "$TEST21_DIR")
 mock_bin="${mock_info%%:*}"
 mock_log="${mock_info#*:}"
 
@@ -473,20 +437,17 @@ echo "/tmp/test-workdir
 sk-test-key-skills
 remote-control" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1
 
-assert_eq "GSD skills cloned" "true" "$(test -f "$HOME/.claude/get-shit-done/test-skill.md" && echo true || echo false)"
-assert_eq "superpowers commands cloned" "true" "$(test -f "$HOME/.claude/commands/test-command.md" && echo true || echo false)"
-
-# Verify git clone was called with correct repos
+# Verify npx was called for GSD
 t21_mock_calls=$(cat "$mock_log")
-assert_contains "git clone called for GSD" "clone https://github.com/gsd-build/get-shit-done" "$t21_mock_calls"
-assert_contains "git clone called for superpowers" "clone https://github.com/obra/superpowers" "$t21_mock_calls"
+assert_contains "npx called for GSD" "npx get-shit-done-cc@latest --global --claude" "$t21_mock_calls"
+assert_contains "claude plugins called for superpowers" "claude plugins install superpowers@superpowers-marketplace" "$t21_mock_calls"
 
-# --- Test 22: Linux install handles git clone failure gracefully ---
-echo "Test 22: Linux install handles git clone failure gracefully"
+# --- Test 22: Linux install handles npx/claude failure gracefully ---
+echo "Test 22: Linux install handles installer failure gracefully"
 TEST22_DIR="$TMPDIR/test22"
 mkdir -p "$TEST22_DIR"
 
-mock_info=$(setup_linux_mocks_with_git "$TEST22_DIR" "fail")
+mock_info=$(setup_linux_mocks "$TEST22_DIR")
 mock_bin="${mock_info%%:*}"
 mock_log="${mock_info#*:}"
 
@@ -496,7 +457,8 @@ export CLAUDE_RESTART_SYSTEMD_DIR="$TEST22_DIR/systemd-user"
 export CLAUDE_RESTART_ENV_DIR="$TEST22_DIR/env-dir"
 export MOCK_LOG="$mock_log"
 export HOME="$TEST22_DIR/fakehome"
-export GIT_MOCK_FAIL="true"
+export NPX_MOCK_FAIL="true"
+export CLAUDE_MOCK_FAIL="true"
 mkdir -p "$HOME"
 
 t22_output=$(echo "/tmp/test-workdir
@@ -504,18 +466,33 @@ sk-test-key-skip
 remote-control" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1)
 t22_exit=$?
 
-assert_eq "install succeeds despite clone failure" "0" "$t22_exit"
-assert_contains "warning about clone failure" "Warning" "$t22_output"
-unset GIT_MOCK_FAIL
+assert_eq "install succeeds despite installer failures" "0" "$t22_exit"
+assert_contains "warning about GSD failure" "Warning" "$t22_output"
+unset NPX_MOCK_FAIL
+unset CLAUDE_MOCK_FAIL
 
-# --- Test 23: Linux install updates existing repos via git pull ---
-echo "Test 23: Linux install updates existing repos via git pull"
+# --- Test 23: Linux install skips GSD when npx not found ---
+echo "Test 23: Linux install skips GSD when npx not available"
 TEST23_DIR="$TMPDIR/test23"
 mkdir -p "$TEST23_DIR"
 
-mock_info=$(setup_linux_mocks_with_git "$TEST23_DIR" "pull")
+mock_info=$(setup_linux_mocks "$TEST23_DIR")
 mock_bin="${mock_info%%:*}"
 mock_log="${mock_info#*:}"
+
+# Replace npx and claude mocks with ones that simulate "not found" (exit 127)
+cat > "$mock_bin/npx" << 'MOCKEOF'
+#!/bin/bash
+echo "command not found: npx" >&2
+exit 127
+MOCKEOF
+chmod +x "$mock_bin/npx"
+cat > "$mock_bin/claude" << 'MOCKEOF'
+#!/bin/bash
+echo "command not found: claude" >&2
+exit 127
+MOCKEOF
+chmod +x "$mock_bin/claude"
 
 export CLAUDE_RESTART_INSTALL_DIR="$TEST23_DIR/install-bin"
 export CLAUDE_RESTART_PLATFORM="Linux"
@@ -525,23 +502,13 @@ export MOCK_LOG="$mock_log"
 export HOME="$TEST23_DIR/fakehome"
 mkdir -p "$HOME"
 
-# Pre-create .git dirs to simulate existing clones
-mkdir -p "$HOME/.claude/get-shit-done/.git"
-echo "existing-gsd" > "$HOME/.claude/get-shit-done/test-skill.md"
-mkdir -p "$HOME/.claude/commands/.git"
-echo "existing-commands" > "$HOME/.claude/commands/test-command.md"
+t23_output=$(echo "/tmp/test-workdir
+sk-test-key-skip-npx
+remote-control" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1)
+t23_exit=$?
 
-echo "/tmp/test-workdir
-sk-test-key-pull
-remote-control" | PATH="$mock_bin:$PATH" bash "$INSTALL_SCRIPT" 2>&1
-
-# Verify git pull was called (not clone) for existing repos
-t23_mock_calls=$(cat "$mock_log")
-assert_contains "git pull called for GSD" "-C $HOME/.claude/get-shit-done pull" "$t23_mock_calls"
-assert_contains "git pull called for commands" "-C $HOME/.claude/commands pull" "$t23_mock_calls"
-# Verify existing content preserved (pull doesn't overwrite in mock)
-t23_content=$(cat "$HOME/.claude/get-shit-done/test-skill.md" 2>/dev/null || echo "")
-assert_eq "existing GSD content preserved" "existing-gsd" "$t23_content"
+assert_eq "install succeeds without working npx" "0" "$t23_exit"
+assert_contains "GSD install failure warning" "Warning" "$t23_output"
 
 export HOME="$ORIG_HOME"
 
