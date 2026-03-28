@@ -13,6 +13,32 @@ sed_inplace() {
     fi
 }
 
+deploy_skills() {
+    # Deploy GSD skills via official npm installer (requires npx)
+    if command -v npx &>/dev/null; then
+        echo "Installing GSD skills via npx..."
+        if ! npx get-shit-done-cc@latest --global --claude 2>&1; then
+            echo "Warning: GSD install failed (skipping)"
+        else
+            echo "Deployed GSD skills via get-shit-done-cc"
+        fi
+    else
+        echo "Warning: npx not found, skipping GSD skills install"
+    fi
+
+    # Deploy superpowers commands via claude plugins (requires claude CLI)
+    if command -v claude &>/dev/null; then
+        echo "Installing superpowers via claude plugins..."
+        if ! claude plugins install superpowers@superpowers-marketplace 2>&1; then
+            echo "Warning: superpowers install failed (skipping)"
+        else
+            echo "Deployed superpowers via claude plugins"
+        fi
+    else
+        echo "Warning: claude CLI not found, skipping superpowers install"
+    fi
+}
+
 usage() {
     echo "Usage: claude-service <command> [args]"
     echo ""
@@ -20,6 +46,7 @@ usage() {
     echo "  add <name> <git-url>   Add a new instrument"
     echo "  add-orchestra          Register the orchestra instrument (no git clone)"
     echo "  remove <name>          Remove an instrument"
+    echo "  update <name>|--all    Update deployed CLAUDE.md and skills from source repo"
     echo "  list                   List all instruments and status"
     echo ""
     echo "Instance commands:"
@@ -37,6 +64,7 @@ usage() {
     echo "  claude-service remove myproject"
     echo "  claude-service list"
     echo "  claude-service add-orchestra"
+    echo "  claude-service update --all           # update all instruments"
     echo "  claude-service status              # status of default instance"
     echo "  claude-service status myproject    # status of myproject instance"
 }
@@ -279,6 +307,60 @@ do_list() {
     done
 }
 
+do_update() {
+    local name="$1"
+    local env_dir="$CONFIG_DIR/$name"
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    # Check instrument exists
+    if [[ ! -d "$env_dir" ]]; then
+        echo "Error: instrument '$name' not found" >&2
+        exit 1
+    fi
+
+    # Resolve work_dir from env file
+    local work_dir
+    work_dir=$(grep '^WORKING_DIRECTORY=' "$env_dir/env" | cut -d= -f2)
+
+    if [[ "$name" == "orchestra" ]]; then
+        # Re-deploy orchestra behavioral spec
+        cp "$script_dir/../orchestra/CLAUDE.md" "$work_dir/CLAUDE.md"
+        echo "Updated orchestra behavioral spec at $work_dir/CLAUDE.md"
+
+        # Re-deploy orchestra identity hint
+        mkdir -p "$work_dir/.claude"
+        cat > "$work_dir/.claude/CLAUDE.md" << IDENTITY
+# Instrument: orchestra
+
+You are the **orchestra** supervisor instance. Your behavioral spec is in CLAUDE.md at the repo root.
+
+## Context Reset
+
+\`\`\`
+claude-restart --instance orchestra
+\`\`\`
+IDENTITY
+        echo "Updated orchestra identity at $work_dir/.claude/CLAUDE.md"
+    else
+        # Re-deploy instrument identity CLAUDE.md
+        mkdir -p "$work_dir/.claude"
+        cp "$script_dir/../INSTRUMENT.md.template" "$work_dir/.claude/CLAUDE.md"
+        sed_inplace "s|INSTANCE_PLACEHOLDER|$name|g" "$work_dir/.claude/CLAUDE.md"
+        echo "Updated instrument identity at $work_dir/.claude/CLAUDE.md"
+    fi
+}
+
+do_update_all() {
+    for dir in "$CONFIG_DIR"/*/; do
+        [[ -d "$dir" ]] || continue
+        local name
+        name=$(basename "$dir")
+        do_update "$name"
+    done
+    deploy_skills
+}
+
 case "${1:-}" in
     add)
         if [[ -z "${2:-}" || -z "${3:-}" ]]; then
@@ -299,6 +381,17 @@ case "${1:-}" in
         ;;
     list)
         do_list
+        ;;
+    update)
+        if [[ "${2:-}" == "--all" ]]; then
+            do_update_all
+        elif [[ -n "${2:-}" ]]; then
+            do_update "$2"
+            deploy_skills
+        else
+            echo "Usage: claude-service update <name>|--all" >&2
+            exit 1
+        fi
         ;;
     start|stop|restart|status|logs|watchdog|heartbeat)
         # Instance-aware commands (existing)
