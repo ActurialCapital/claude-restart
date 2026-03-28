@@ -30,57 +30,6 @@ usage() {
     echo "Usage: install.sh [--install | --uninstall | --help]"
 }
 
-# Migrate v1.1 flat env to v2.0 per-instance directory (per D-08)
-migrate_v1_env() {
-    local old_env="$ENV_DIR/env"
-    local new_dir="$ENV_DIR/$DEFAULT_INSTANCE"
-    local new_env="$new_dir/env"
-
-    # Only migrate if flat env exists AND instance dir does not
-    if [[ -f "$old_env" && ! -d "$new_dir" ]]; then
-        echo "claude-restart: migrating v1.1 env to per-instance layout..."
-        mkdir -p "$new_dir"
-        cp "$old_env" "$new_env"
-
-        # Add new variables if missing from migrated env
-        if ! grep -q 'CLAUDE_INSTANCE_NAME' "$new_env"; then
-            echo "" >> "$new_env"
-            echo "# Instance name (used by wrapper for --name flag)" >> "$new_env"
-            echo "CLAUDE_INSTANCE_NAME=$DEFAULT_INSTANCE" >> "$new_env"
-        fi
-        if ! grep -q 'CLAUDE_RESTART_FILE' "$new_env"; then
-            echo "" >> "$new_env"
-            echo "# Per-instance restart file path" >> "$new_env"
-            echo "CLAUDE_RESTART_FILE=$HOME/.config/claude-restart/$DEFAULT_INSTANCE/restart" >> "$new_env"
-        fi
-        if ! grep -q 'CLAUDE_MEMORY_MAX' "$new_env"; then
-            echo "" >> "$new_env"
-            echo "# Memory limit for this instance (systemd MemoryMax)" >> "$new_env"
-            echo "CLAUDE_MEMORY_MAX=1G" >> "$new_env"
-        fi
-        if ! grep -q 'WORKING_DIRECTORY' "$new_env"; then
-            # Try to extract WorkingDirectory from existing systemd unit
-            local work_dir=""
-            if [[ -f "$SYSTEMD_USER_DIR/claude.service" ]]; then
-                work_dir=$(grep '^WorkingDirectory=' "$SYSTEMD_USER_DIR/claude.service" 2>/dev/null | cut -d= -f2)
-            fi
-            if [[ -z "$work_dir" ]]; then
-                work_dir="$HOME"
-            fi
-            echo "" >> "$new_env"
-            echo "# Working directory for this instrument" >> "$new_env"
-            echo "WORKING_DIRECTORY=$work_dir" >> "$new_env"
-        fi
-
-        chmod 600 "$new_env"
-
-        # Backup and remove old flat env
-        cp "$old_env" "$old_env.v1-backup"
-        rm -f "$old_env"
-        echo "claude-restart: migrated $old_env -> $new_env (backup at $old_env.v1-backup)"
-    fi
-}
-
 deploy_skills() {
     # Deploy GSD skills via official npm installer (requires npx)
     if command -v npx &>/dev/null; then
@@ -128,9 +77,6 @@ do_install_linux() {
 
     # 1c. Deploy skills (GSD + superpowers) to ~/.claude/ (Phase 14)
     deploy_skills
-
-    # 1d. Migrate v1.1 env if present (per D-08)
-    migrate_v1_env
 
     # 2. Prompt for working directory (stored in env file per D-04)
     read -rp "Working directory for Claude [$(pwd)]: " WORK_DIR
@@ -195,27 +141,10 @@ do_install_linux() {
     cp "$SCRIPT_DIR/../systemd/claude@.service" "$SYSTEMD_USER_DIR/claude@.service"
     echo "Installed systemd template unit to $SYSTEMD_USER_DIR/claude@.service"
 
-    # Remove old non-template unit if present (migration from v1.1)
-    if [[ -f "$SYSTEMD_USER_DIR/claude.service" ]]; then
-        systemctl --user stop claude.service 2>/dev/null || true
-        systemctl --user disable claude.service 2>/dev/null || true
-        rm -f "$SYSTEMD_USER_DIR/claude.service"
-        echo "Removed old claude.service (replaced by template unit)"
-    fi
-
     # 5. Install watchdog template units (Phase 8: per-instance watchdog)
     cp "$SCRIPT_DIR/../systemd/claude-watchdog@.service" "$SYSTEMD_USER_DIR/claude-watchdog@.service"
     cp "$SCRIPT_DIR/../systemd/claude-watchdog@.timer" "$SYSTEMD_USER_DIR/claude-watchdog@.timer"
     echo "Installed watchdog template units to $SYSTEMD_USER_DIR/"
-
-    # Migrate old non-template watchdog units if present
-    if [[ -f "$SYSTEMD_USER_DIR/claude-watchdog.timer" ]]; then
-        systemctl --user stop claude-watchdog.timer 2>/dev/null || true
-        systemctl --user disable claude-watchdog.timer 2>/dev/null || true
-        rm -f "$SYSTEMD_USER_DIR/claude-watchdog.timer"
-        rm -f "$SYSTEMD_USER_DIR/claude-watchdog.service"
-        echo "Removed old non-template watchdog units (replaced by template units)"
-    fi
 
     # 6. Enable linger and start default instance (per D-06)
     loginctl enable-linger "$USER" 2>/dev/null || echo "Warning: loginctl enable-linger failed (may need root)"
@@ -296,9 +225,6 @@ do_uninstall() {
         done
         rm -f "$SYSTEMD_USER_DIR/claude-watchdog@.timer"
         rm -f "$SYSTEMD_USER_DIR/claude-watchdog@.service"
-        # Also clean up old non-template units if still present
-        rm -f "$SYSTEMD_USER_DIR/claude-watchdog.timer"
-        rm -f "$SYSTEMD_USER_DIR/claude-watchdog.service"
 
         # Stop and remove all template instances
         for env_dir in "$ENV_DIR"/*/; do
@@ -311,8 +237,6 @@ do_uninstall() {
 
         # Remove template unit
         rm -f "$SYSTEMD_USER_DIR/claude@.service"
-        # Remove old non-template unit if still present
-        rm -f "$SYSTEMD_USER_DIR/claude.service"
 
         # Remove all env directories
         rm -rf "$ENV_DIR"
