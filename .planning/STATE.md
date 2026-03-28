@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 Phase: --
 Plan: --
 Status: v3.0 milestone complete, ready for `/gsd:new-milestone`
-Last activity: 2026-03-28 - Completed quick task 260327-us4: Fix INT handler resource leak in claude-wrapper
+Last activity: 2026-03-28 - Completed quick task 260327-vcd: Fix shell injection in ensure_remote_config
 
 Progress: [██████████] 100% (v3.0 milestone)
 
@@ -65,9 +65,10 @@ None.
 | 260327-r5e | Remove dead code: orphaned v1.1 systemd units and migration code | 2026-03-28 | b694488 | [260327-r5e](./quick/260327-r5e-remove-dead-code-orphaned-systemd-units-/) |
 | 260327-u4v | Clean test suite: remove 3 Nyquist string-grep validation tests | 2026-03-28 | a90e8cc | [260327-u4v](./quick/260327-u4v-clean-test-suite-remove-nyquist-string-g/) |
 | 260327-us4 | Fix INT handler resource leak in claude-wrapper (heartbeat + FIFO cleanup) | 2026-03-28 | 69837cf | [260327-us4](./quick/260327-us4-fix-int-handler-resource-leak-in-claude-/) |
+| 260327-vcd | Fix shell injection in ensure_remote_config (sys.argv instead of string interpolation) | 2026-03-28 | 34e67d2 | [260327-vcd](./quick/260327-vcd-fix-shell-injection-in-ensure-remote-con/) |
 
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Completed quick task 260327-us4
+Stopped at: Completed quick task 260327-vcd
 Resume: `/gsd:new-milestone` for next version
