@@ -4,8 +4,8 @@ milestone: v3.0
 milestone_name: Synchronous Dispatch Architecture
 status: completed
 stopped_at: Milestone v3.0 archived
-last_updated: "2026-03-27T23:00:00Z"
-last_activity: 2026-03-27
+last_updated: "2026-03-28T00:19:00Z"
+last_activity: 2026-03-28
 progress:
   total_phases: 3
   completed_phases: 3
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 Phase: --
 Plan: --
 Status: v3.0 milestone complete, ready for `/gsd:new-milestone`
-Last activity: 2026-03-27 - Completed quick task 260327-ph1: Replace vendored skills with git clone
+Last activity: 2026-03-28 - Completed quick task 260327-qnl: Use official installers for GSD and superpowers
 
 Progress: [██████████] 100% (v3.0 milestone)
 
@@ -61,9 +61,10 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260327-ph1 | Replace vendored skills/commands with git clone from source repos | 2026-03-27 | 40ca13d | [260327-ph1](./quick/260327-ph1-replace-vendored-skills-and-commands-wit/) |
+| 260327-qnl | Use official installers (npx, claude plugins) for GSD and superpowers | 2026-03-28 | d3af984 | [260327-qnl](./quick/260327-qnl-use-official-installers-for-gsd-and-supe/) |
 
 ## Session Continuity
 
-Last session: 2026-03-27
-Stopped at: v3.0 milestone archived
+Last session: 2026-03-28
+Stopped at: Completed quick task 260327-qnl
 Resume: `/gsd:new-milestone` for next version
