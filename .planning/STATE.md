@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
+milestone: v3.0
+milestone_name: Synchronous Dispatch Architecture
 status: completed
-stopped_at: Completed quick task 260327-w3t
-last_updated: "2026-03-28T04:10:10.865Z"
-last_activity: "2026-03-28 - Completed quick task 260327-u4v: Clean test suite, remove Nyquist string-grep tests"
+stopped_at: Milestone v3.0 archived
+last_updated: "2026-03-28T04:42:16.773Z"
+last_activity: 2026-03-28
 progress:
   total_phases: 3
   completed_phases: 3
@@ -18,7 +18,7 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-27)
+See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Multiple Claude sessions run reliably on a VPS with easy lifecycle management and optional autonomous coordination across projects.
 **Current focus:** Planning next milestone
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 Phase: --
 Plan: --
 Status: v3.0 milestone complete, ready for `/gsd:new-milestone`
-Last activity: 2026-03-28 - Completed quick task 260327-w3t: GitHub Actions auto-deploy workflow
+Last activity: 2026-03-28
 
 Progress: [██████████] 100% (v3.0 milestone)
 
@@ -37,7 +37,7 @@ Progress: [██████████] 100% (v3.0 milestone)
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Full decision history archived in milestones/v1.0-ROADMAP.md, milestones/v1.1-ROADMAP.md, milestones/v2.0-ROADMAP.md, and milestones/v3.0-ROADMAP.md.
+Full decision history archived in milestones/v3.0-ROADMAP.md (v1.0-v2.0 archives removed — obsolete after v3.0 refactor).
 
 ### Key v3.0 Architecture Decisions
 

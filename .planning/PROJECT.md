@@ -69,39 +69,39 @@ Multiple Claude sessions run reliably on a VPS with easy lifecycle management an
 - Session resume/context preservation across restarts — not in scope
 - Smart watchdog with activity detection — periodic restart is simpler and avoids false positives
 - launchd (macOS service management) — personal VPS is Linux; macOS is dev only
-- Telegram integration — future add-on on top of remote-control
 - Orchestra relay mode — autonomous only; direct access covers manual interaction
 - Orchestra making project-level implementation decisions — instruments hold project intelligence
 - Claude Agent Teams integration — designed for single-repo coordination, not cross-project orchestration
 - Custom IPC protocol between sessions — `claude -p` and `claude-restart` are sufficient
 - Running both modes simultaneously per instrument — either remote-control or telegram, not both
+- Telegram integration — future add-on, now planned as next milestone
 
 ## Current State
 
-**Shipped:** v3.0 Synchronous Dispatch Architecture (2026-03-27)
+**Shipped:** v3.0 Synchronous Dispatch Architecture (2026-03-28)
 **Status:** All milestones complete. Ready for next milestone.
 
 - v1.0 MVP — wrapper loop, restart mechanism, shell integration
 - v1.1 VPS Reliability — systemd service, watchdog, heartbeat, mode selection
 - v2.0 Multi-Instance Orchestration — template units, instrument lifecycle, autonomous orchestra
 - v3.0 Synchronous Dispatch — `claude -p` dispatch, peers teardown, skills deployment, instrument identity
+- Post-v3.0 quick tasks — security fixes, update command, VPS verification checklist, git hook deploy
 
 ## Context
 
-Shipped v3.0 with ~3,100 LOC shell (source + tests) across 4 milestones, 14 phases.
+Shipped v3.0+ with ~2,100 LOC shell (source + tests) across 4 milestones, 14 phases, 10 quick tasks.
 Tech stack: Pure bash, zsh shell integration, systemd for Linux service management.
 Scripts: `bin/claude-wrapper`, `bin/claude-restart`, `bin/install.sh`, `bin/claude-service`.
-Artifacts: `systemd/claude@.service` (template unit), `systemd/claude-watchdog@.service` (template watchdog), `systemd/claude-watchdog@.timer` (template timer), `systemd/env.template`, `orchestra/CLAUDE.md` (supervisor behavioral spec), `INSTRUMENT.md.template` (identity template).
+Artifacts: `systemd/claude@.service` (template unit), `systemd/claude-watchdog@.service` (template watchdog), `systemd/claude-watchdog@.timer` (template timer), `systemd/env.template`, `orchestra/CLAUDE.md` (supervisor behavioral spec), `INSTRUMENT.md.template` (identity template), `.github/workflows/deploy.yml` (GitHub Actions), `VPS-VERIFICATION.md` (deployment checklist).
 
 VPS environment: Personal Linux server with systemd. User manages VPS from phone, running multiple projects each with its own Claude instance and cloned repository. Architecture: "instruments" (isolated Claude sessions per project) + optional "orchestra" (autonomous supervisor dispatching via `claude -p`). All sessions use `claude remote-control` for phone interaction.
 
-**Deployment:** SSH access available via `.env` (SSH_HOST, SSH_PRIVATE_KEY, SSH_PASSPHRASE) for live VPS testing and deployment. GSD skills and superpowers commands deployed to `~/.claude/` via `install.sh`.
+**Deployment:** Git post-receive hook on VPS (`~/claude-restart.git`) auto-deploys on `git push vps main`. Also pushes to GitHub (`origin`). GitHub Actions workflow exists but requires billing fix. SSH access via `.env` (SSH_HOST, SSH_PRIVATE_KEY, SSH_PASSPHRASE).
 
-Known tech debt (from v3.0 audit):
+Known tech debt:
 - CLAUDE_WATCHDOG_HOURS env var implies configurability but timer is hardcoded 8h
-- Pre-existing Test 20 failure (CLAUDE_WATCHDOG_HOURS doesn't modify systemd timer)
-- 4 human verification items pending (live VPS runtime)
-- deploy_skills not called from macOS install path (intentional, undocumented)
+- npx not available on VPS (GSD skills install skipped during deploy)
+- VPS-VERIFICATION.md checklist not yet executed on live VPS
 
 ## Constraints
 
@@ -155,4 +155,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after v3.0 milestone*
+*Last updated: 2026-03-28 after v3.0 milestone completion*

@@ -1,5 +1,19 @@
 # Milestones
 
+## v3.0 Synchronous Dispatch Architecture (Shipped: 2026-03-28)
+
+**Phases completed:** 3 phases, 5 plans, 8 tasks
+
+**Key accomplishments:**
+
+- Removed channel_args block and CLAUDE_CHANNELS env var -- instruments launch claude with only mode_args and current_args, no peers infrastructure
+- Removed CLAUDE_CHANNELS injection, .mcp.json provisioning, and peers-specific tests from claude-service and test suite
+- Orchestra CLAUDE.md rewritten for synchronous claude -p dispatch with parallel backgrounding, --continue chaining, fleet discovery, and escalation protocol
+- deploy_skills function added to install.sh copying GSD and superpowers from repo to ~/.claude/ on VPS, with 3 new tests and pre-existing test fixes
+- Per-instrument identity CLAUDE.md template deployed via claude-service add with INSTANCE_PLACEHOLDER substitution, plus session naming fix for default instance
+
+---
+
 ## v3.0 Synchronous Dispatch Architecture (Shipped: 2026-03-27)
 
 **Phases completed:** 3 phases, 5 plans, 8 tasks
