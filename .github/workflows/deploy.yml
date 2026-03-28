@@ -21,17 +21,22 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          passphrase: ${{ secrets.VPS_SSH_PASSPHRASE }}
-          script: |
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          eval "$(ssh-agent -a $SSH_AUTH_SOCK)"
+          echo "${{ secrets.VPS_SSH_PASSPHRASE }}" | SSH_ASKPASS_REQUIRE=force SSH_ASKPASS=/bin/cat ssh-add ~/.ssh/deploy_key
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} bash -s << 'DEPLOY'
             set -euo pipefail
-            REPO="${{ secrets.VPS_REPO_PATH }}"
-            REPO="${REPO:-$HOME/claude-restart}"
+            REPO="${HOME}/claude-restart"
 
             # Pull latest code
             cd "$REPO"
@@ -39,7 +44,7 @@ jobs:
 
             # Copy scripts to ~/.local/bin
             cp bin/claude-wrapper bin/claude-restart bin/claude-service ~/.local/bin/
-            chmod +x ~/.local/bin/claude-{wrapper,restart,service}
+            chmod +x ~/.local/bin/claude-wrapper ~/.local/bin/claude-restart ~/.local/bin/claude-service
 
             # Copy systemd units and reload
             cp systemd/claude@.service systemd/claude-watchdog@.service systemd/claude-watchdog@.timer ~/.config/systemd/user/
@@ -48,7 +53,5 @@ jobs:
             # Re-deploy CLAUDE.md templates and skills
             claude-service update --all
 
-            # Uncomment the next line to restart all active Claude sessions after deploy:
-            # systemctl --user restart 'claude@*.service'
-
             echo "Deploy complete."
+          DEPLOY
