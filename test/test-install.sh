@@ -243,7 +243,7 @@ T11_SYSTEMD_DIR=$(cat "$TEST11_DIR/_systemd_dir")
 assert_eq "template unit file exists" "true" "$(test -f "$T11_SYSTEMD_DIR/claude@.service" && echo true || echo false)"
 
 unit_content=$(cat "$T11_SYSTEMD_DIR/claude@.service")
-assert_contains "unit has Restart=on-failure" "Restart=on-failure" "$unit_content"
+assert_contains "unit has Restart=always" "Restart=always" "$unit_content"
 
 # --- Test 12: Linux install creates env file with correct permissions ---
 echo "Test 12: Linux install creates env file with correct permissions"

@@ -396,8 +396,8 @@ case "${1:-}" in
         do_add_orchestra
         ;;
     remove)
-        local force=false
-        local remove_name=""
+        force=false
+        remove_name=""
         shift  # past 'remove'
         while [[ $# -gt 0 ]]; do
             case "$1" in

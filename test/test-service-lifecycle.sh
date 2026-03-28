@@ -190,7 +190,7 @@ assert_contains "testproject listed" "testproject" "$output"
 # --- Test 8: remove cleans up everything ---
 echo "Test 8: remove cleans up everything"
 > "$SYSTEMCTL_LOG"
-bash "$SERVICE_SCRIPT" remove "testproject"
+bash "$SERVICE_SCRIPT" remove --force "testproject"
 
 assert_file_not_exists "env dir deleted" "$CONFIG_DIR/testproject"
 assert_file_not_exists "work dir deleted" "$HOME/instruments/testproject"
@@ -232,7 +232,7 @@ assert_contains "restart hint in identity" "claude-restart --instance identity-t
 assert_contains "remote access hint" "remote-control --name identity-test" "$id_content"
 
 # Cleanup for other tests
-bash "$SERVICE_SCRIPT" remove "identity-test"
+bash "$SERVICE_SCRIPT" remove --force "identity-test"
 
 # --- Test 13: identity CLAUDE.md is in .claude/ not root ---
 echo "Test 13: identity CLAUDE.md is in .claude/ subdir not root"
@@ -246,7 +246,7 @@ assert_file_exists ".claude/CLAUDE.md exists" "$HOME/instruments/nooverwrite/.cl
 repo_claude=$(cat "$HOME/instruments/nooverwrite/CLAUDE.md")
 assert_eq "repo CLAUDE.md not overwritten" "ORIGINAL_REPO_CONTENT" "$repo_claude"
 
-bash "$SERVICE_SCRIPT" remove "nooverwrite"
+bash "$SERVICE_SCRIPT" remove --force "nooverwrite"
 
 # --- Test 14: add-orchestra deploys identity in .claude/ ---
 echo "Test 14: add-orchestra deploys identity in .claude/ subdir"
@@ -259,7 +259,7 @@ assert_file_exists "orchestra .claude/CLAUDE.md exists" "$HOME/instruments/orche
 orch_id_content=$(cat "$HOME/instruments/orchestra/.claude/CLAUDE.md")
 assert_contains "orchestra name in identity" "orchestra" "$orch_id_content"
 
-bash "$SERVICE_SCRIPT" remove "orchestra" 2>/dev/null || true
+bash "$SERVICE_SCRIPT" remove --force "orchestra" 2>/dev/null || true
 
 # --- Test 15: update requires argument ---
 echo "Test 15: update requires argument"
@@ -294,7 +294,7 @@ assert_contains "npx called for GSD" "get-shit-done-cc" "$npx_calls"
 claude_calls=$(cat "$CLAUDE_LOG")
 assert_contains "claude called for superpowers" "plugins install" "$claude_calls"
 
-bash "$SERVICE_SCRIPT" remove "update-test"
+bash "$SERVICE_SCRIPT" remove --force "update-test"
 
 # --- Test 18: update orchestra re-deploys behavioral spec and identity ---
 echo "Test 18: update orchestra re-deploys behavioral spec and identity"
@@ -326,7 +326,7 @@ fi
 orch_id=$(cat "$HOME/instruments/orchestra/.claude/CLAUDE.md")
 assert_contains "identity restored" "orchestra" "$orch_id"
 
-bash "$SERVICE_SCRIPT" remove "orchestra" 2>/dev/null || true
+bash "$SERVICE_SCRIPT" remove --force "orchestra" 2>/dev/null || true
 
 # --- Test 19: update --all iterates all instruments ---
 echo "Test 19: update --all iterates all instruments"
@@ -353,8 +353,8 @@ assert_contains "instrument b restored" "all-test-b" "$id_b"
 npx_count=$(grep -c "get-shit-done-cc" "$NPX_LOG")
 assert_eq "deploy_skills called once" "1" "$npx_count"
 
-bash "$SERVICE_SCRIPT" remove "all-test-a"
-bash "$SERVICE_SCRIPT" remove "all-test-b"
+bash "$SERVICE_SCRIPT" remove --force "all-test-a"
+bash "$SERVICE_SCRIPT" remove --force "all-test-b"
 
 # --- Test 20: update does NOT modify env files ---
 echo "Test 20: update does not modify env files"
@@ -370,7 +370,7 @@ env_after=$(cat "$CONFIG_DIR/envcheck/env")
 
 assert_eq "env file unchanged" "$env_before" "$env_after"
 
-bash "$SERVICE_SCRIPT" remove "envcheck"
+bash "$SERVICE_SCRIPT" remove --force "envcheck"
 
 # --- Results ---
 echo ""

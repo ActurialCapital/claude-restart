@@ -5,9 +5,5 @@ Description=Claude Watchdog for %i - mode-aware forced restart
 Type=oneshot
 EnvironmentFile=%h/.config/claude-restart/%i/env
 ExecStart=/bin/bash -c '\
-  if [ "$CLAUDE_CONNECT" = "remote-control" ]; then \
-    echo "claude-watchdog[%i]: skipped restart (remote-control mode has built-in reconnection)"; \
-    exit 0; \
-  fi; \
   echo "claude-watchdog[%i]: restarting claude@%i (mode=$CLAUDE_CONNECT)"; \
   systemctl --user restart claude@%i.service'

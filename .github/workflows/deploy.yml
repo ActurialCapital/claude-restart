@@ -42,9 +42,11 @@ jobs:
             cd "$REPO"
             git pull origin main
 
-            # Copy scripts to ~/.local/bin
+            # Copy scripts and templates to ~/.local/bin
             cp bin/claude-wrapper bin/claude-restart bin/claude-service ~/.local/bin/
             chmod +x ~/.local/bin/claude-wrapper ~/.local/bin/claude-restart ~/.local/bin/claude-service
+            cp INSTRUMENT.md.template ~/.local/INSTRUMENT.md.template
+            cp systemd/env.template ~/.config/claude-restart/env.template
 
             # Copy systemd units and reload
             cp systemd/claude@.service systemd/claude-watchdog@.service systemd/claude-watchdog@.timer ~/.config/systemd/user/
@@ -52,6 +54,14 @@ jobs:
 
             # Re-deploy CLAUDE.md templates and skills
             claude-service update --all
+
+            # Restart all instrument services to pick up new scripts/units
+            for dir in ~/.config/claude-restart/*/; do
+              [ -d "$dir" ] || continue
+              inst=$(basename "$dir")
+              echo "Restarting claude@${inst}.service..."
+              systemctl --user restart "claude@${inst}.service" || true
+            done
 
             echo "Deploy complete."
           DEPLOY

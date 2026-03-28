@@ -11,7 +11,7 @@ EnvironmentFile=%h/.config/claude-restart/%i/env
 ExecStartPre=/bin/bash -c 'systemctl --user set-property claude@%i.service MemoryMax=${CLAUDE_MEMORY_MAX:-1G} 2>/dev/null || true'
 ExecStart=%h/.local/bin/claude-wrapper --dangerously-skip-permissions
 WorkingDirectory=%h
-Restart=on-failure
+Restart=always
 RestartSec=5
 KillSignal=SIGTERM
 TimeoutStopSec=10
