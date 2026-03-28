@@ -115,7 +115,7 @@ stop_heartbeat() {
 # Signal handlers
 trap 'stop_heartbeat; if [[ -n "$child_pid" ]]; then kill -TERM "$child_pid" 2>/dev/null; wait "$child_pid" 2>/dev/null; fi; rm -f "${HEARTBEAT_FIFO:-}" 2>/dev/null; exit 0' TERM
 trap '' HUP
-trap 'exit 130' INT
+trap 'stop_heartbeat; if [[ -n "$child_pid" ]]; then kill -INT "$child_pid" 2>/dev/null; wait "$child_pid" 2>/dev/null; fi; exit 130' INT
 
 while true; do
     # Heartbeat setup (telegram mode only, per D-04, D-11, D-16)

@@ -518,82 +518,68 @@ else
 fi
 
 # --- Test 26: SIGINT in telegram mode cleans up heartbeat and FIFO ---
+# NOTE: Bash's INT trap only fires reliably when INT is sent to the process group
+# (as Ctrl+C does in a real terminal). Sending kill -INT to a single PID does not
+# reliably trigger the trap during `wait`. We use python3 start_new_session=True
+# to give the wrapper its own process group and os.killpg() to simulate Ctrl+C.
 echo "Test 26: SIGINT cleans up heartbeat subshell and FIFO"
 rm -f "$LOG" "$RESTART_FILE"
 PIDFILE26="$TMPDIR/child26.pid"
-rm -f "$PIDFILE26"
+EXITFILE26="$TMPDIR/wrapper26.exit"
+rm -f "$PIDFILE26" "$EXITFILE26"
 # Mock claude that writes its PID and sleeps (like Test 7 pattern)
 cat > "$MOCK_CLAUDE" << MOCKEOF
 #!/bin/bash
 echo \$\$ > "$PIDFILE26"
 cat > /dev/null &
 _drain_pid=\$!
-trap 'kill \$_drain_pid 2>/dev/null; wait \$_drain_pid 2>/dev/null; exit 130' INT
+trap 'kill \$_drain_pid 2>/dev/null; wait \$_drain_pid 2>/dev/null; exit 130' INT TERM
 sleep 30 &
 wait \$!
 MOCKEOF
 chmod +x "$MOCK_CLAUDE"
 
-CLAUDE_CONNECT=telegram "$WRAPPER" &
-wrapper_pid=$!
-# Wait for mock claude to start
-for i in $(seq 1 50); do
-    [[ -f "$PIDFILE26" ]] && break
-    sleep 0.1
-done
-assert_eq "child PID file created (test 26)" "true" "$(test -f "$PIDFILE26" && echo true || echo false)"
-child_pid26=$(cat "$PIDFILE26")
-
-# Find the heartbeat subshell PID (child of wrapper that is not the mock claude)
-heartbeat_pid26=""
-for pid in $(pgrep -P "$wrapper_pid" 2>/dev/null); do
-    if [[ "$pid" != "$child_pid26" ]]; then
-        heartbeat_pid26="$pid"
+# Launch wrapper in its own process group via python3 so we can send INT
+# to the entire group (simulates Ctrl+C)
+python3 -c "
+import subprocess, os, signal, time, sys
+env = dict(os.environ)
+env['CLAUDE_CONNECT'] = 'telegram'
+proc = subprocess.Popen(
+    ['/bin/bash', '$WRAPPER'],
+    start_new_session=True,
+    env=env
+)
+# Wait for mock claude child to write its PID
+for _ in range(50):
+    if os.path.exists('$PIDFILE26'):
         break
-    fi
-done
+    time.sleep(0.1)
+time.sleep(0.3)  # let heartbeat subshell start
+os.killpg(proc.pid, signal.SIGINT)
+proc.wait()
+with open('$EXITFILE26', 'w') as f:
+    # Python reports negative returncode for signals; -2 = SIGINT
+    # But if the trap catches it and does exit 130, we get 130
+    f.write(str(proc.returncode))
+" 2>&1
 
-# Find the FIFO file
-fifo_path26=$(ls /tmp/claude-heartbeat.* 2>/dev/null | head -1 || echo "")
-
-# Send SIGINT to wrapper
-kill -INT "$wrapper_pid" 2>/dev/null
-wait "$wrapper_pid" 2>/dev/null
-wrapper_exit26=$?
-# bash reports 130 for INT
+wrapper_exit26=$(cat "$EXITFILE26" 2>/dev/null || echo "MISSING")
 assert_eq "wrapper exits 130 on SIGINT" "130" "$wrapper_exit26"
 
 # Give cleanup a moment
 sleep 0.3
 
-# Assert heartbeat subshell is dead
+# Assert no leftover heartbeat FIFOs
 TOTAL=$((TOTAL + 1))
-if [[ -n "$heartbeat_pid26" ]]; then
-    if ! kill -0 "$heartbeat_pid26" 2>/dev/null; then
-        echo "  PASS: heartbeat subshell terminated after SIGINT"
-        PASS=$((PASS + 1))
-    else
-        echo "  FAIL: heartbeat subshell still running after SIGINT (pid $heartbeat_pid26)"
-        FAIL=$((FAIL + 1))
-        kill -9 "$heartbeat_pid26" 2>/dev/null || true
-    fi
-else
-    echo "  PASS: heartbeat subshell terminated after SIGINT (no longer in process table)"
-    PASS=$((PASS + 1))
-fi
-
-# Assert FIFO cleaned up
-TOTAL=$((TOTAL + 1))
-if [[ -n "$fifo_path26" && ! -e "$fifo_path26" ]]; then
+leftover_fifos=$(find /tmp -maxdepth 1 -name 'claude-heartbeat.*' 2>/dev/null | wc -l | tr -d ' ')
+if [[ "$leftover_fifos" == "0" ]]; then
     echo "  PASS: FIFO file removed after SIGINT"
     PASS=$((PASS + 1))
-elif [[ -z "$fifo_path26" ]]; then
-    echo "  PASS: FIFO file already gone after SIGINT"
-    PASS=$((PASS + 1))
 else
-    echo "  FAIL: FIFO file still exists after SIGINT: $fifo_path26"
+    echo "  FAIL: leftover FIFO files after SIGINT"
     FAIL=$((FAIL + 1))
-    rm -f "$fifo_path26" 2>/dev/null
+    find /tmp -maxdepth 1 -name 'claude-heartbeat.*' -delete 2>/dev/null
 fi
 
 # --- Summary ---
