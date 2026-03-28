@@ -497,6 +497,40 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# --- Test 23b: ensure_remote_config handles paths with special characters ---
+echo "Test 23b: ensure_remote_config handles single-quote in working directory path"
+rm -f "$LOG" "$RESTART_FILE"
+FAKE_HOME="$TMPDIR/fakehome_special"
+mkdir -p "$FAKE_HOME"
+rm -f "$FAKE_HOME/.claude.json"
+SPECIAL_DIR="$TMPDIR/it's a dir"
+mkdir -p "$SPECIAL_DIR"
+create_mock 0
+(cd "$SPECIAL_DIR" && HOME="$FAKE_HOME" CLAUDE_CONNECT=remote-control CLAUDE_WRAPPER_HEARTBEAT_INTERVAL=1 "$WRAPPER" 2>&1 || true)
+TOTAL=$((TOTAL + 1))
+if [[ -f "$FAKE_HOME/.claude.json" ]]; then
+    echo "  PASS: ~/.claude.json created with special-char path"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: ~/.claude.json not created with special-char path"
+    FAIL=$((FAIL + 1))
+fi
+TOTAL=$((TOTAL + 1))
+if python3 -c "
+import json, sys
+with open('$FAKE_HOME/.claude.json') as f: d = json.load(f)
+projects = d.get('projects', {})
+found = any(\"it's a dir\" in k for k in projects)
+sys.exit(0 if found else 1)
+" 2>/dev/null; then
+    echo "  PASS: single-quote path found in projects"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: single-quote path not found in projects"
+    FAIL=$((FAIL + 1))
+fi
+rm -rf "$SPECIAL_DIR" "$FAKE_HOME"
+
 # --- Test 24: default instance gets --name flag ---
 echo "Test 24: default instance gets --name flag"
 rm -f "$LOG" "$RESTART_FILE"
