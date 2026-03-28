@@ -518,11 +518,11 @@ fi
 TOTAL=$((TOTAL + 1))
 if python3 -c "
 import json, sys
-with open('$FAKE_HOME/.claude.json') as f: d = json.load(f)
+with open(sys.argv[1]) as f: d = json.load(f)
 projects = d.get('projects', {})
 found = any(\"it's a dir\" in k for k in projects)
 sys.exit(0 if found else 1)
-" 2>/dev/null; then
+" "$FAKE_HOME/.claude.json" 2>/dev/null; then
     echo "  PASS: single-quote path found in projects"
     PASS=$((PASS + 1))
 else

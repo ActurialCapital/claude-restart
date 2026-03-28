@@ -61,21 +61,22 @@ ensure_remote_config() {
         if command -v python3 &>/dev/null; then
             python3 -c "
 import json, sys
-with open('$config_file') as f: d = json.load(f)
+config_file, cwd = sys.argv[1], sys.argv[2]
+with open(config_file) as f: d = json.load(f)
 changed = False
 if not d.get('remoteDialogSeen'):
     d['remoteDialogSeen'] = True
     changed = True
 projects = d.setdefault('projects', {})
-proj = projects.setdefault('$cwd', {})
+proj = projects.setdefault(cwd, {})
 if not proj.get('hasTrustDialogAccepted'):
     proj['hasTrustDialogAccepted'] = True
     proj.setdefault('hasCompletedProjectOnboarding', True)
     proj.setdefault('allowedTools', [])
     changed = True
 if changed:
-    with open('$config_file', 'w') as f: json.dump(d, f, indent=2)
-"
+    with open(config_file, 'w') as f: json.dump(d, f, indent=2)
+" "$config_file" "$cwd"
         elif command -v jq &>/dev/null; then
             local tmp
             tmp=$(jq --arg cwd "$cwd" '
@@ -91,10 +92,11 @@ if changed:
     else
         # Create minimal config
         python3 -c "
-import json
-d = {'remoteDialogSeen': True, 'projects': {'$cwd': {'hasTrustDialogAccepted': True, 'hasCompletedProjectOnboarding': True, 'allowedTools': []}}}
-with open('$config_file', 'w') as f: json.dump(d, f, indent=2)
-" 2>/dev/null || echo '{"remoteDialogSeen": true}' > "$config_file"
+import json, sys
+config_file, cwd = sys.argv[1], sys.argv[2]
+d = {'remoteDialogSeen': True, 'projects': {cwd: {'hasTrustDialogAccepted': True, 'hasCompletedProjectOnboarding': True, 'allowedTools': []}}}
+with open(config_file, 'w') as f: json.dump(d, f, indent=2)
+" "$config_file" "$cwd" 2>/dev/null || echo '{"remoteDialogSeen": true}' > "$config_file"
     fi
 }
 
