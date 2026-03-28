@@ -1,0 +1,363 @@
+#!/bin/bash
+# claude-health: structured health report for claude@ service instances
+set -euo pipefail
+
+CONFIG_DIR="$HOME/.config/claude-restart"
+JSON_MODE=false
+TARGET_INSTANCE=""
+
+usage() {
+    echo "Usage: claude-health [--json] [instance]"
+    echo ""
+    echo "Produce a structured health report for claude@ service instances."
+    echo ""
+    echo "Options:"
+    echo "  --json         Output JSON (machine-readable, for orchestra)"
+    echo "  --help, -h     Show this help"
+    echo ""
+    echo "Arguments:"
+    echo "  instance       Report for a single instance (default: all)"
+    echo ""
+    echo "Examples:"
+    echo "  claude-health              # markdown report for all instances"
+    echo "  claude-health default      # markdown report for 'default' instance"
+    echo "  claude-health --json       # JSON report for all instances"
+    echo "  claude-health --json blog  # JSON report for 'blog' instance"
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --json) JSON_MODE=true ;;
+        --help|-h) usage; exit 0 ;;
+        -*) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+        *) TARGET_INSTANCE="$1" ;;
+    esac
+    shift
+done
+
+# Discover instances from config directories
+discover_instances() {
+    local instances=()
+    for dir in "$CONFIG_DIR"/*/; do
+        [[ -d "$dir" ]] || continue
+        instances+=("$(basename "$dir")")
+    done
+    if [[ ${#instances[@]} -eq 0 ]]; then
+        echo "No instances found in $CONFIG_DIR" >&2
+        exit 1
+    fi
+    echo "${instances[@]}"
+}
+
+# Format bytes to human-readable
+format_bytes() {
+    local bytes="$1"
+    if [[ -z "$bytes" || "$bytes" == "[not set]" || "$bytes" == "infinity" ]]; then
+        echo "N/A"
+        return
+    fi
+    if [[ $bytes -ge 1073741824 ]]; then
+        echo "$(( bytes / 1073741824 ))G"
+    elif [[ $bytes -ge 1048576 ]]; then
+        echo "$(( bytes / 1048576 ))M"
+    elif [[ $bytes -ge 1024 ]]; then
+        echo "$(( bytes / 1024 ))K"
+    else
+        echo "${bytes}B"
+    fi
+}
+
+# Format seconds to human-readable uptime
+format_uptime() {
+    local seconds="$1"
+    if [[ "$seconds" -le 0 ]]; then
+        echo "N/A"
+        return
+    fi
+    local days=$(( seconds / 86400 ))
+    local hours=$(( (seconds % 86400) / 3600 ))
+    local mins=$(( (seconds % 3600) / 60 ))
+    if [[ $days -gt 0 ]]; then
+        echo "${days}d ${hours}h ${mins}m"
+    elif [[ $hours -gt 0 ]]; then
+        echo "${hours}h ${mins}m"
+    else
+        echo "${mins}m"
+    fi
+}
+
+# Get systemctl property, returning empty string on failure
+get_property() {
+    local service="$1" property="$2"
+    systemctl --user show --property="$property" "$service" 2>/dev/null | cut -d= -f2- || echo ""
+}
+
+# Collect instance data into variables prefixed with inst_
+collect_instance_data() {
+    local name="$1"
+    local service="claude@${name}.service"
+    local watchdog_timer="claude-watchdog@${name}.timer"
+
+    # Service status
+    inst_active_state=$(get_property "$service" "ActiveState")
+    inst_sub_state=$(get_property "$service" "SubState")
+    inst_pid=$(get_property "$service" "MainPID")
+    [[ "$inst_pid" == "0" ]] && inst_pid=""
+
+    # Uptime
+    local enter_ts
+    enter_ts=$(get_property "$service" "ActiveEnterTimestamp")
+    inst_uptime_seconds=0
+    if [[ -n "$enter_ts" && "$inst_active_state" == "active" ]]; then
+        local enter_epoch
+        enter_epoch=$(date -d "$enter_ts" +%s 2>/dev/null || echo "0")
+        local now_epoch
+        now_epoch=$(date +%s)
+        if [[ "$enter_epoch" -gt 0 ]]; then
+            inst_uptime_seconds=$(( now_epoch - enter_epoch ))
+        fi
+    fi
+
+    # Memory
+    inst_memory_current=$(get_property "$service" "MemoryCurrent")
+    [[ "$inst_memory_current" == "[not set]" || "$inst_memory_current" == "infinity" ]] && inst_memory_current=""
+    inst_memory_max=$(get_property "$service" "MemoryMax")
+    [[ "$inst_memory_max" == "[not set]" || "$inst_memory_max" == "infinity" ]] && inst_memory_max=""
+
+    # /proc memory stats (if PID available)
+    inst_vm_rss=""
+    inst_vm_peak=""
+    if [[ -n "$inst_pid" && -f "/proc/$inst_pid/status" ]]; then
+        inst_vm_rss=$(grep -i '^VmRSS:' "/proc/$inst_pid/status" 2>/dev/null | awk '{print $2, $3}' || echo "")
+        inst_vm_peak=$(grep -i '^VmPeak:' "/proc/$inst_pid/status" 2>/dev/null | awk '{print $2, $3}' || echo "")
+    fi
+
+    # Lifecycle events (last 24h)
+    inst_lifecycle_events=""
+    inst_lifecycle_events=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+        --no-pager -o short-iso 2>/dev/null \
+        | grep -iE "Started|Stopped|Main process exited|claude exited:|restart file found|starting mode=|received SIG" \
+        | tail -20 || echo "")
+
+    # Exit codes (last 24h)
+    inst_exit_lines=""
+    inst_exit_lines=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+        --no-pager --output=cat 2>/dev/null \
+        | grep -i "claude exited:" || echo "")
+
+    inst_restart_count=0
+    inst_restart_count=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+        --no-pager --output=cat 2>/dev/null \
+        | grep -cE "Started|starting mode=" || echo "0")
+
+    # Last exit code
+    inst_last_exit_code=""
+    inst_last_exit_desc=""
+    if [[ -n "$inst_exit_lines" ]]; then
+        local last_exit_line
+        last_exit_line=$(echo "$inst_exit_lines" | tail -1)
+        inst_last_exit_code=$(echo "$last_exit_line" | grep -oP 'code \K[0-9]+' || echo "")
+        inst_last_exit_desc=$(echo "$last_exit_line" | grep -oP 'claude exited: \K.*' || echo "$last_exit_line")
+    fi
+
+    # Error/warning lines (last 24h)
+    inst_error_lines=""
+    inst_error_lines=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+        --no-pager --output=cat 2>/dev/null \
+        | grep -iE "error|warn|fatal|panic|failed" \
+        | grep -viE "stderr-filter" \
+        | tail -10 || echo "")
+
+    inst_error_count=0
+    inst_error_count=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+        --no-pager --output=cat 2>/dev/null \
+        | grep -ciE "error|fatal|panic|failed" || echo "0")
+
+    # Watchdog status
+    inst_watchdog_active=$(systemctl --user is-active "$watchdog_timer" 2>/dev/null || echo "inactive")
+    inst_watchdog_last=""
+    inst_watchdog_last=$(get_property "$watchdog_timer" "LastTriggerUSec")
+}
+
+# Render markdown report for one instance
+render_markdown_instance() {
+    local name="$1"
+
+    echo "## Instance: $name"
+    echo ""
+
+    # 1. Status Summary
+    echo "### Status Summary"
+    echo ""
+    echo "| Property | Value |"
+    echo "|----------|-------|"
+    echo "| State | ${inst_active_state:-unknown} (${inst_sub_state:-unknown}) |"
+    echo "| PID | ${inst_pid:-N/A} |"
+    echo "| Uptime | $(format_uptime "$inst_uptime_seconds") |"
+    local mem_display="N/A"
+    if [[ -n "$inst_memory_current" ]]; then
+        mem_display=$(format_bytes "$inst_memory_current")
+    fi
+    local mem_max_display="N/A"
+    if [[ -n "$inst_memory_max" ]]; then
+        mem_max_display=$(format_bytes "$inst_memory_max")
+    fi
+    echo "| Memory | ${mem_display} / ${mem_max_display} |"
+    echo ""
+
+    # 2. Recent Lifecycle Events
+    echo "### Recent Lifecycle Events (24h)"
+    echo ""
+    if [[ -n "$inst_lifecycle_events" ]]; then
+        echo '```'
+        echo "$inst_lifecycle_events"
+        echo '```'
+    else
+        echo "No lifecycle events in the last 24 hours."
+    fi
+    echo ""
+
+    # 3. Exit Codes
+    echo "### Exit Codes (24h)"
+    echo ""
+    if [[ -n "$inst_exit_lines" ]]; then
+        echo '```'
+        echo "$inst_exit_lines"
+        echo '```'
+        echo ""
+        echo "Starts/restarts in 24h: $inst_restart_count"
+    else
+        echo "No exit events recorded in the last 24 hours."
+    fi
+    echo ""
+
+    # 4. Memory Stats
+    echo "### Memory Stats"
+    echo ""
+    if [[ -n "$inst_pid" ]]; then
+        echo "| Metric | Value |"
+        echo "|--------|-------|"
+        echo "| MemoryCurrent (cgroup) | ${mem_display} |"
+        if [[ -n "$inst_vm_rss" ]]; then
+            echo "| VmRSS (/proc) | ${inst_vm_rss} |"
+        fi
+        if [[ -n "$inst_vm_peak" ]]; then
+            echo "| VmPeak (/proc) | ${inst_vm_peak} |"
+        fi
+    else
+        echo "Service not running -- no memory stats available."
+    fi
+    echo ""
+
+    # 5. Errors/Warnings
+    echo "### Errors/Warnings (24h)"
+    echo ""
+    if [[ -n "$inst_error_lines" ]]; then
+        echo "Error count: $inst_error_count"
+        echo ""
+        echo '```'
+        echo "$inst_error_lines"
+        echo '```'
+    else
+        echo "No errors or warnings in the last 24 hours."
+    fi
+    echo ""
+
+    # 6. Watchdog Status
+    echo "### Watchdog"
+    echo ""
+    echo "| Property | Value |"
+    echo "|----------|-------|"
+    echo "| Timer | ${inst_watchdog_active} |"
+    echo "| Last Trigger | ${inst_watchdog_last:-N/A} |"
+    echo ""
+}
+
+# Build JSON object for one instance
+build_json_instance() {
+    local name="$1"
+    local mem_cur="${inst_memory_current:-0}"
+    local mem_max="${inst_memory_max:-0}"
+    [[ -z "$mem_cur" ]] && mem_cur=0
+    [[ -z "$mem_max" ]] && mem_max=0
+    local wd_active="false"
+    [[ "$inst_watchdog_active" == "active" ]] && wd_active="true"
+
+    cat <<JSONEOF
+    {
+      "name": "$name",
+      "status": "${inst_active_state:-unknown}",
+      "sub_state": "${inst_sub_state:-unknown}",
+      "uptime_seconds": ${inst_uptime_seconds:-0},
+      "pid": ${inst_pid:-null},
+      "memory_current_bytes": ${mem_cur},
+      "memory_max_bytes": ${mem_max},
+      "restart_count_24h": ${inst_restart_count:-0},
+      "error_count_24h": ${inst_error_count:-0},
+      "last_exit_code": ${inst_last_exit_code:-null},
+      "last_exit_description": $(json_string "${inst_last_exit_desc:-}"),
+      "watchdog_active": ${wd_active}
+    }
+JSONEOF
+}
+
+# Escape a string for JSON
+json_string() {
+    local s="$1"
+    if [[ -z "$s" ]]; then
+        echo '""'
+    else
+        # Escape backslashes, double quotes, newlines, tabs
+        s="${s//\\/\\\\}"
+        s="${s//\"/\\\"}"
+        s="${s//$'\n'/\\n}"
+        s="${s//$'\t'/\\t}"
+        echo "\"$s\""
+    fi
+}
+
+# --- Main ---
+
+# Determine instances to report on
+if [[ -n "$TARGET_INSTANCE" ]]; then
+    if [[ ! -d "$CONFIG_DIR/$TARGET_INSTANCE" ]]; then
+        echo "Error: instance '$TARGET_INSTANCE' not found in $CONFIG_DIR" >&2
+        exit 1
+    fi
+    instances=("$TARGET_INSTANCE")
+else
+    read -ra instances <<< "$(discover_instances)"
+fi
+
+if $JSON_MODE; then
+    # JSON output
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    echo "{"
+    echo "  \"timestamp\": \"$timestamp\","
+    echo "  \"instances\": ["
+    first=true
+    for name in "${instances[@]}"; do
+        collect_instance_data "$name"
+        if $first; then
+            first=false
+        else
+            echo "    ,"
+        fi
+        build_json_instance "$name"
+    done
+    echo "  ]"
+    echo "}"
+else
+    # Markdown output
+    echo "# Claude Fleet Health Report"
+    echo ""
+    echo "Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo ""
+    for name in "${instances[@]}"; do
+        collect_instance_data "$name"
+        render_markdown_instance "$name"
+        echo "---"
+        echo ""
+    done
+fi
