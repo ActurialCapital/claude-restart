@@ -178,7 +178,7 @@ do_install_macos() {
         # 5. Append shell function block
         cat >> "$ZSHRC" << ZSHBLOCK
 $SENTINEL_START
-export CLAUDE_CONNECT="telegram"
+export CLAUDE_CONNECT="remote-control"
 export CLAUDE_RESTART_DEFAULT_OPTS="--dangerously-skip-permissions"
 export PATH="$INSTALL_DIR:\$PATH"
 claude-restart() {

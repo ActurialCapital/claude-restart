@@ -116,19 +116,19 @@ assert_contains "absolute path to wrapper" "$INSTALL_DIR/claude-wrapper" "$zshrc
 
 # --- Test 9: CLAUDE_CONNECT and CLAUDE_RESTART_DEFAULT_OPTS exports ---
 echo "Test 9: CLAUDE_CONNECT and CLAUDE_RESTART_DEFAULT_OPTS exports"
-assert_contains "CLAUDE_CONNECT export" 'CLAUDE_CONNECT="telegram"' "$zshrc_content"
+assert_contains "CLAUDE_CONNECT export" 'CLAUDE_CONNECT="remote-control"' "$zshrc_content"
 assert_contains "default opts without channel string" 'CLAUDE_RESTART_DEFAULT_OPTS="--dangerously-skip-permissions"' "$zshrc_content"
 
-# --- Test 10: No hardcoded telegram channel string in DEFAULT_OPTS ---
-echo "Test 10: No hardcoded telegram channel string in DEFAULT_OPTS"
-# Ensure the channel string is NOT in the zshrc block's DEFAULT_OPTS line
+# --- Test 10: No hardcoded channel string in DEFAULT_OPTS ---
+echo "Test 10: No hardcoded channel string in DEFAULT_OPTS"
+# Ensure no channel string is in the zshrc block's DEFAULT_OPTS line
 default_opts_line=$(grep "CLAUDE_RESTART_DEFAULT_OPTS" "$FAKE_ZSHRC" || true)
 TOTAL=$((TOTAL + 1))
 if [[ "$default_opts_line" != *"plugin:telegram"* ]]; then
-    echo "  PASS: no telegram channel string in DEFAULT_OPTS"
+    echo "  PASS: no channel string in DEFAULT_OPTS"
     PASS=$((PASS + 1))
 else
-    echo "  FAIL: DEFAULT_OPTS still contains telegram channel string"
+    echo "  FAIL: DEFAULT_OPTS contains channel string"
     FAIL=$((FAIL + 1))
 fi
 
@@ -344,7 +344,7 @@ TEST18_DIR="$TMPDIR/test18"
 mkdir -p "$TEST18_DIR"
 run_linux_install "$TEST18_DIR" "/tmp/test-workdir
 sk-test-key-456
-telegram"
+remote-control"
 
 T18_SYSTEMD_DIR=$(cat "$TEST18_DIR/_systemd_dir")
 T18_MOCK_LOG=$(cat "$TEST18_DIR/_mock_log")
@@ -366,7 +366,7 @@ TEST19_DIR="$TMPDIR/test19"
 mkdir -p "$TEST19_DIR"
 run_linux_install "$TEST19_DIR" "/tmp/test-workdir
 sk-test-key-789
-telegram"
+remote-control"
 
 T19_SYSTEMD_DIR=$(cat "$TEST19_DIR/_systemd_dir")
 T19_MOCK_LOG=$(cat "$TEST19_DIR/_mock_log")
@@ -402,7 +402,7 @@ mkdir -p "$TEST20_DIR"
 export CLAUDE_WATCHDOG_HOURS=4
 run_linux_install "$TEST20_DIR" "/tmp/test-workdir
 sk-test-key-custom
-telegram"
+remote-control"
 
 T20_SYSTEMD_DIR=$(cat "$TEST20_DIR/_systemd_dir")
 t20_timer_content=$(cat "$T20_SYSTEMD_DIR/claude-watchdog@.timer")
