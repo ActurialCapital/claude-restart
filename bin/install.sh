@@ -81,41 +81,30 @@ migrate_v1_env() {
     fi
 }
 
-GSD_REPO="${CLAUDE_RESTART_GSD_REPO:-https://github.com/gsd-build/get-shit-done}"
-SUPERPOWERS_REPO="${CLAUDE_RESTART_SUPERPOWERS_REPO:-https://github.com/obra/superpowers}"
-
 deploy_skills() {
-    local claude_dir="$HOME/.claude"
-    local gsd_dir="$claude_dir/get-shit-done"
-    local commands_dir="$claude_dir/commands"
-
-    # Deploy GSD skills (get-shit-done) via git
-    if [[ -d "$gsd_dir/.git" ]]; then
-        echo "Updating GSD skills in $gsd_dir..."
-        git -C "$gsd_dir" pull --ff-only 2>&1 || echo "Warning: GSD pull failed (using existing version)"
-    else
-        echo "Cloning GSD skills to $gsd_dir..."
-        rm -rf "$gsd_dir"
-        if ! git clone "$GSD_REPO" "$gsd_dir" 2>&1; then
-            echo "Warning: GSD clone failed from $GSD_REPO (skipping)"
-            return
+    # Deploy GSD skills via official npm installer (requires npx)
+    if command -v npx &>/dev/null; then
+        echo "Installing GSD skills via npx..."
+        if ! npx get-shit-done-cc@latest --global --claude 2>&1; then
+            echo "Warning: GSD install failed (skipping)"
+        else
+            echo "Deployed GSD skills via get-shit-done-cc"
         fi
-    fi
-    echo "Deployed GSD skills to $gsd_dir/"
-
-    # Deploy superpowers commands via git
-    if [[ -d "$commands_dir/.git" ]]; then
-        echo "Updating superpowers commands in $commands_dir..."
-        git -C "$commands_dir" pull --ff-only 2>&1 || echo "Warning: superpowers pull failed (using existing version)"
     else
-        echo "Cloning superpowers commands to $commands_dir..."
-        rm -rf "$commands_dir"
-        if ! git clone "$SUPERPOWERS_REPO" "$commands_dir" 2>&1; then
-            echo "Warning: superpowers clone failed from $SUPERPOWERS_REPO (skipping)"
-            return
-        fi
+        echo "Warning: npx not found, skipping GSD skills install"
     fi
-    echo "Deployed superpowers commands to $commands_dir/"
+
+    # Deploy superpowers commands via claude plugins (requires claude CLI)
+    if command -v claude &>/dev/null; then
+        echo "Installing superpowers via claude plugins..."
+        if ! claude plugins install superpowers@superpowers-marketplace 2>&1; then
+            echo "Warning: superpowers install failed (skipping)"
+        else
+            echo "Deployed superpowers via claude plugins"
+        fi
+    else
+        echo "Warning: claude CLI not found, skipping superpowers install"
+    fi
 }
 
 do_install_linux() {
