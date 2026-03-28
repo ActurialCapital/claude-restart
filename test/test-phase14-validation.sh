@@ -50,31 +50,29 @@ assert_ge() {
 # DEPL-01: Installer deploys GSD skills to ~/.claude/get-shit-done/
 # =============================================================================
 
-echo "DEPL-01: install.sh deploy_skills clones GSD to ~/.claude/get-shit-done/"
+echo "DEPL-01: install.sh deploy_skills installs GSD via npx"
 
-# Verify deploy_skills function exists and uses git clone
+# Verify deploy_skills function exists and uses official installer
 install_content=$(cat "$REPO_ROOT/bin/install.sh")
 assert_contains "deploy_skills function defined" "deploy_skills()" "$install_content"
-assert_contains "GSD repo URL configured" 'gsd-build/get-shit-done' "$install_content"
-assert_contains "GSD target is ~/.claude/get-shit-done" 'gsd_dir' "$install_content"
-assert_contains "git clone used for GSD" 'git clone' "$install_content"
+assert_contains "npx get-shit-done-cc installer used" 'npx get-shit-done-cc@latest' "$install_content"
+assert_contains "GSD install uses --global --claude flags" '--global --claude' "$install_content"
 
 # Verify deploy_skills is wired into do_install_linux
 deploy_call_count=$(grep -c "deploy_skills" "$REPO_ROOT/bin/install.sh")
 assert_ge "deploy_skills appears at least twice in install.sh (def + call)" 2 "$deploy_call_count"
 
-# Verify skills README stub exists (vendored content removed)
-assert_eq "skills/README.md exists" "true" "$(test -f "$REPO_ROOT/skills/README.md" && echo true || echo false)"
+# Verify skills/ directory no longer exists (not vendored, not cloned)
+assert_eq "skills/ directory removed" "false" "$(test -d "$REPO_ROOT/skills" && echo true || echo false)"
 
 # =============================================================================
 # DEPL-02: Installer deploys superpowers commands to ~/.claude/commands/
 # =============================================================================
 
-echo "DEPL-02: install.sh deploy_skills clones commands to ~/.claude/commands/"
+echo "DEPL-02: install.sh deploy_skills installs superpowers via claude plugins"
 
-assert_contains "superpowers repo URL configured" 'obra/superpowers' "$install_content"
-assert_contains "commands target is ~/.claude/commands" 'commands_dir' "$install_content"
-assert_eq "commands/README.md exists" "true" "$(test -f "$REPO_ROOT/commands/README.md" && echo true || echo false)"
+assert_contains "claude plugins install used for superpowers" 'claude plugins install superpowers@superpowers-marketplace' "$install_content"
+assert_eq "commands/ directory removed" "false" "$(test -d "$REPO_ROOT/commands" && echo true || echo false)"
 
 # =============================================================================
 # INST-01: Instruments know their own instance name via CLAUDE.md
@@ -130,11 +128,11 @@ assert_contains "wrapper adds --name to mode_args" '"--name"' "$wrapper_content"
 # DEPL-01/02 graceful skip: deploy_skills warns when git clone fails
 # =============================================================================
 
-echo "DEPL-01/02 edge case: graceful fallback on clone failure"
+echo "DEPL-01/02 edge case: graceful fallback on installer failure"
 
-assert_contains "GSD clone failure warning" "Warning" "$install_content"
-assert_contains "clone handles pull failure" "pull failed" "$install_content"
-assert_contains "deploy_skills handles fresh clone and update" "pull --ff-only" "$install_content"
+assert_contains "GSD install failure warning" "Warning" "$install_content"
+assert_contains "superpowers install failure warning" "superpowers install failed" "$install_content"
+assert_contains "npx not found fallback" "npx not found" "$install_content"
 
 # =============================================================================
 # INST-01 orchestra: add-orchestra deploys .claude/CLAUDE.md identity
