@@ -133,21 +133,21 @@ collect_instance_data() {
         inst_vm_peak=$(grep -i '^VmPeak:' "/proc/$inst_pid/status" 2>/dev/null | awk '{print $2, $3}' || echo "")
     fi
 
-    # Lifecycle events (last 24h)
+    # Lifecycle events (last 24h) — timeout prevents hangs on bloated journals
     inst_lifecycle_events=""
-    inst_lifecycle_events=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+    inst_lifecycle_events=$(timeout 10 journalctl --user -u "claude@${name}" --since "24 hours ago" \
         --no-pager -o short-iso 2>/dev/null \
         | grep -iE "Started|Stopped|Main process exited|claude exited:|restart file found|starting mode=|received SIG" \
         | tail -20 || echo "")
 
     # Exit codes (last 24h)
     inst_exit_lines=""
-    inst_exit_lines=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+    inst_exit_lines=$(timeout 10 journalctl --user -u "claude@${name}" --since "24 hours ago" \
         --no-pager --output=cat 2>/dev/null \
         | grep -i "claude exited:" || echo "")
 
     inst_restart_count=0
-    inst_restart_count=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+    inst_restart_count=$(timeout 10 journalctl --user -u "claude@${name}" --since "24 hours ago" \
         --no-pager --output=cat 2>/dev/null \
         | grep -cE "Started|starting mode=" || echo "0")
 
@@ -163,14 +163,14 @@ collect_instance_data() {
 
     # Error/warning lines (last 24h)
     inst_error_lines=""
-    inst_error_lines=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+    inst_error_lines=$(timeout 10 journalctl --user -u "claude@${name}" --since "24 hours ago" \
         --no-pager --output=cat 2>/dev/null \
         | grep -iE "error|warn|fatal|panic|failed" \
         | grep -viE "stderr-filter" \
         | tail -10 || echo "")
 
     inst_error_count=0
-    inst_error_count=$(journalctl --user -u "claude@${name}" --since "24 hours ago" \
+    inst_error_count=$(timeout 10 journalctl --user -u "claude@${name}" --since "24 hours ago" \
         --no-pager --output=cat 2>/dev/null \
         | grep -ciE "error|fatal|panic|failed" || echo "0")
 
