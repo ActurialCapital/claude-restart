@@ -57,6 +57,7 @@ usage() {
     echo "  logs [instance]        Follow service logs (journalctl)"
     echo "  watchdog [instance]    Show watchdog timer status"
     echo "  heartbeat [instance]   Show recent heartbeat log entries"
+    echo "  health [--json] [instance]  Show structured health report"
     echo ""
     echo "Instance defaults to 'default' if not specified."
     echo "Examples:"
@@ -425,6 +426,11 @@ case "${1:-}" in
             echo "Usage: claude-service update <name>|--all" >&2
             exit 1
         fi
+        ;;
+    health)
+        shift  # past 'health'
+        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        exec "$script_dir/claude-health" "$@"
         ;;
     start|stop|restart|status|logs|watchdog|heartbeat)
         # Instance-aware commands (existing)
